@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SKUdesk deck</title>
+<style>
+  @page { size: 1280px 720px; margin: 0; }
+  :root { --ink: #11161d; --muted: #566170; --line: #dfe4ea; --bg: #ffffff; --soft: #f4f6f9; --blue: #1a56db; --green: #0f7a43; --red: #b42318; --amber: #8a5a00; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #cfd5dd; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
+  .slide { width: 1280px; height: 720px; margin: 24px auto; background: var(--bg); padding: 64px 80px; position: relative; overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column; }
+  @media print { html, body { background: none; } .slide { margin: 0; } }
+  .kicker { font-size: 18px; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); font-weight: 700; margin-bottom: 14px; }
+  h1 { font-size: 64px; line-height: 1.05; margin: 0 0 20px; letter-spacing: -.02em; }
+  h2 { font-size: 44px; line-height: 1.12; margin: 0 0 24px; letter-spacing: -.015em; max-width: 1000px; }
+  p, li { font-size: 24px; line-height: 1.45; color: var(--muted); margin: 0 0 12px; }
+  ul { padding-left: 26px; margin: 0; }
+  strong { color: var(--ink); }
+  .foot { position: absolute; left: 80px; right: 80px; bottom: 28px; display: flex; justify-content: space-between; font-size: 15px; color: #8a94a3; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; flex: 1; min-height: 0; }
+  .card { background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 22px 26px; }
+  .card h3 { margin: 0 0 8px; font-size: 22px; }
+  .card p, .card li { font-size: 20px; }
+  .big { font-size: 96px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .good { color: var(--green); } .bad { color: var(--red); } .warn { color: var(--amber); }
+  img.shot { width: 100%; border: 1px solid var(--line); border-radius: 12px; display: block; }
+  .shotbox { overflow: hidden; border-radius: 12px; border: 1px solid var(--line); max-height: 440px; }
+  .shotbox img { width: 100%; display: block; }
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 12px; }
+  .step { background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-height: 210px; }
+  .step b { display: block; font-size: 15px; color: var(--blue); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+  .step span { display: block; font-size: 19px; line-height: 1.4; color: var(--muted); }
+  .step.gate { border-color: var(--blue); background: #eef3fe; }
+  table { border-collapse: collapse; width: 100%; font-size: 21px; }
+  td, th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--muted); }
+  th { color: var(--ink); font-size: 16px; text-transform: uppercase; letter-spacing: .05em; }
+  td:first-child { color: var(--ink); font-weight: 600; }
+  .note { font-size: 17px; color: #7a8493; }
+</style>
+</head>
+<body>
+
+<section class="slide" style="justify-content:center">
+  <div class="kicker">Google Cloud AI Builder Cup 2026 · Retail &amp; Commerce</div>
+  <h1>SKUdesk</h1>
+  <h2 style="font-weight:500; color:var(--muted)">One agent that buys cheapest, helps you sell, and finds arbitrage. Only for the identical product.</h2>
+  <p>If nothing is provably the same item, or no gap survives the costs, it says no. A person approves every spend.</p>
+  <div class="foot"><span>Live: skudesk-ij5vrivnta-as.a.run.app</span><span>github.com/johnnyduo/SKUdesk_</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">The problem</div>
+  <h2>Price comparison breaks the moment two listings are not the same thing.</h2>
+  <div class="cols">
+    <div>
+      <p>We searched Google Shopping for <strong>LEGO 10294 Titanic</strong>. It returned 36 listings. Among them:</p>
+      <ul>
+        <li>Light kits and spare parts that name the set</li>
+        <li>Generic "building blocks" reusing the set number</li>
+        <li>Used and opened boxes</li>
+        <li>Real sets listed at <strong>$11</strong> and <strong>$19</strong> against a $679.99 retail price</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>What goes wrong</h3>
+      <p>A naive agent "finds" a 2,000% margin on a $21 Titanic and recommends buying it. The cheapest price is usually the wrong product, or not a real price.</p>
+      <p><strong>Arbitrage and buying agents are only as good as their idea of "same".</strong></p>
+    </div>
+  </div>
+  <div class="foot"><span>SKUdesk</span><span>Real data, captured 2026-10-15</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">How it works</div>
+  <h2>One gate decides what counts as the same item. Everything else is arithmetic.</h2>
+  <div class="flow">
+    <div class="step"><b>1 · Search</b><span>Google Shopping via SerpApi, eBay API ready. Every paid call cached; monthly cap.</span></div>
+    <div class="step gate"><b>2 · Identity gate</b><span>Gemini compares each listing with the product. It must <strong>quote</strong> the brand and set number from both listings.</span></div>
+    <div class="step"><b>3 · Price sanity</b><span>Same product, believable price? Far below median or below half of retail is set aside.</span></div>
+    <div class="step"><b>4 · Economics</b><span>Integer-cent landed cost, fees, shipping, margin floor. Verdict or an honest no.</span></div>
+    <div class="step"><b>5 · Approval</b><span>The agent files a pending proposal. A person approves. No payment details held.</span></div>
+  </div>
+  <p style="margin-top:24px">Buy, sell and arbitrage are three views of the same verified set of identical offers.</p>
+  <div class="foot"><span>SKUdesk</span><span>Gemini 3.5 Flash-Lite · Cloud Run · Firestore · Cloud Scheduler</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">Gen AI, done carefully</div>
+  <h2>The model is not trusted. Its evidence is checked.</h2>
+  <div class="cols">
+    <div>
+      <p>Running the gate on real listings exposed a failure our hand-made eval missed: the model credited listings with a <strong>"LEGO"</strong> brand they never wrote, and passed generic blocks that reuse a set number.</p>
+      <p>Fix: Gemini must copy the brand and identifier out of each listing. <strong>Code verifies the quotes are really in the text</strong>. Anything it cannot back up becomes "uncertain" and never passes. Errors fail closed.</p>
+    </div>
+    <div class="card">
+      <h3>Defences, all tested</h3>
+      <ul>
+        <li>Verbatim evidence check on brand and identifier</li>
+        <li>Listing text treated as untrusted (injection pairs in the eval)</li>
+        <li>Price sanity against Gemini's recalled retail price, flagged as recalled, not live</li>
+        <li>"Too good to be true" above a 50% margin</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>SKUdesk</span><span>src/identity.ts · src/retail.ts</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">Live result · Titanic</div>
+  <h2>The honest answer is often "no arbitrage". Here is why.</h2>
+  <div class="cols" style="grid-template-columns: 1.35fr 1fr; gap: 32px;">
+    <div class="shotbox"><img src="img/titanic.png" alt="SKUdesk result for LEGO 10294 Titanic"></div>
+    <div>
+      <p>30 listings checked, <strong>7 identical</strong>, 19 different, 4 uncertain.</p>
+      <p>Two "identical" offers at $11 and $19 are <strong class="warn">set aside</strong> as bad prices.</p>
+      <p>Cheapest real offer: <strong>$645 landed</strong>. Resale at the next price loses <strong class="bad">$82.01</strong>.</p>
+      <p class="note">Asking prices, not sold prices. Fees, return reserve and shipping are shown and editable assumptions.</p>
+    </div>
+  </div>
+  <div class="foot"><span>SKUdesk</span><span>Live on Cloud Run</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">Live result · Orchid</div>
+  <h2>When nothing is provably the same, the agent buys nothing.</h2>
+  <div class="cols" style="grid-template-columns: 1.35fr 1fr; gap: 32px;">
+    <div class="shotbox"><img src="img/orchid.png" alt="SKUdesk result for LEGO Icons Orchid 10311"></div>
+    <div>
+      <p>30 listings for <strong>LEGO Icons Orchid 10311</strong>. <strong class="bad">Zero</strong> cleared the gate.</p>
+      <p>Before the evidence check, a "866 PCS Creative Bouquet" building-block set reusing the number 10311 passed as identical. Now it does not.</p>
+      <p>No proposal is filed. Nothing is offered for approval.</p>
+    </div>
+  </div>
+  <div class="foot"><span>SKUdesk</span><span>Live on Cloud Run</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">Evidence</div>
+  <h2>43 hand-labelled pairs, run against real Gemini. The number that matters is zero.</h2>
+  <div class="cols">
+    <div>
+      <div class="big good">0</div>
+      <p style="margin-top:8px"><strong>false-identical</strong>: pairs that should not match but passed the gate.</p>
+      <p>41 of 43 exact. The other 2 were labelled different and answered "uncertain", which is the safe side.</p>
+    </div>
+    <div class="card">
+      <h3>Said plainly</h3>
+      <ul>
+        <li>Most listing texts are hand-written to look like marketplace titles; 5 are real titles from the day we found the leak</li>
+        <li>Labels come from LEGO set numbers</li>
+        <li>No GTIN pairs and no image inputs yet</li>
+        <li>43 pairs is a small sample, not a guarantee</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>SKUdesk</span><span>npm run eval</span></div>
+</section>
+
+<section class="slide">
+  <div class="kicker">Built on Google Cloud</div>
+  <h2>Small, real and deployed. Plain web2 end to end.</h2>
+  <table>
+    <tr><th>Part</th><th>Role</th><th>State</th></tr>
+    <tr><td>Gemini 3.5 Flash-Lite</td><td>Identity gate, retail price recall</td><td class="good">live</td></tr>
+    <tr><td>Cloud Run</td><td>API and one-page UI, deployed from source</td><td class="good">live</td></tr>
+    <tr><td>Firestore</td><td>Cache, analyses, proposals, scan log</td><td class="good">live</td></tr>
+    <tr><td>Cloud Scheduler</td><td>Daily watchlist scan, secret-protected</td><td class="good">live</td></tr>
+    <tr><td>Secret Manager</td><td>API keys, least-privilege service account</td><td class="good">live</td></tr>
+    <tr><td>eBay Browse API</td><td>Second source</td><td class="warn">written, not run against live API</td></tr>
+    <tr><td>Payments</td><td>Approval is a decision log, not a purchase</td><td class="warn">not built, on purpose</td></tr>
+  </table>
+  <div class="foot"><span>SKUdesk</span><span>Smoke test: npm run smoke -- &lt;url&gt;</span></div>
+</section>
+
+<section class="slide" style="justify-content:center">
+  <div class="kicker">Impact and next</div>
+  <h2>Retail teams lose money on "the same item" that was not.</h2>
+  <ul>
+    <li><strong>Now:</strong> sealed LEGO, US market, five markets selectable</li>
+    <li><strong>Next:</strong> GTIN and image evidence, eBay sold-price data, more categories where identity is checkable</li>
+    <li><strong>Principle:</strong> the agent's value is knowing when to say no, and showing its evidence when it says yes</li>
+  </ul>
+  <p style="margin-top:28px"><strong>Try it:</strong> skudesk-ij5vrivnta-as.a.run.app &nbsp;·&nbsp; <strong>Code:</strong> github.com/johnnyduo/SKUdesk_</p>
+  <p class="note">The concept builds on the team's earlier work; all code and assets here were written new for this competition.</p>
+</section>
+
+</body>
+</html>

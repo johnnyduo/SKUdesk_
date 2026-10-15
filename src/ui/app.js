@@ -188,13 +188,16 @@ async function refreshScans() {
 }
 
 async function init() {
-  await refreshStatus();
   const sel = $('market');
+  // Listen first so a quick submit is never lost to a full-page form post while the status request is in flight.
+  $('form').addEventListener('submit', (ev) => { ev.preventDefault(); run($('query').value.trim(), sel.value); });
+  await refreshStatus();
+  const chosen = sel.value;
   sel.replaceChildren(...status.markets.map((m) => h('option', { value: m.code }, `${m.label} (${m.currency})`)));
+  sel.value = chosen;
   const ex = $('examples');
   const picks = status.watchlist.length ? status.watchlist : [{ query: 'LEGO 10294 Titanic', market: 'us' }];
   ex.replaceChildren(h('span', { class: 'muted' }, 'Try:'), ...picks.map((w) => h('button', { type: 'button', on: { click: () => { $('query').value = w.query; sel.value = w.market; $('form').requestSubmit(); } } }, w.query)));
-  $('form').addEventListener('submit', (ev) => { ev.preventDefault(); run($('query').value.trim(), sel.value); });
   refreshScans();
 }
 

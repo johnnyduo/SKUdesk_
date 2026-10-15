@@ -6,3 +6,5 @@ node_modules/
 .DS_Store
 .cache/
 eval/last-run.json
+video/*.mp4
+deploy/last-url.txt
