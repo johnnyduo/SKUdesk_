@@ -1,0 +1,23 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "pairs": 43,
+  "exact": 41,
+  "falseIdentical": 0,
+  "missedIdentical": 0,
+  "engineErrors": 0,
+  "ranAt": "2026-10-15T16:25:36.849Z",
+  "categories": [
+    "same-set-reworded",
+    "same-name-different-set",
+    "condition",
+    "imitation",
+    "bundle",
+    "partial",
+    "same-set-regional",
+    "different-product",
+    "ambiguous",
+    "held-out",
+    "injection",
+    "real-world"
+  ]
+}

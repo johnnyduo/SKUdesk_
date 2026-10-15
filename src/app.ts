@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { analyze, DEFAULT_ASSUMPTIONS, type AgentDeps } from './agent.ts';
 import { MARKETS } from './serpapi.ts';
@@ -15,17 +16,35 @@ export interface AppDeps {
   sources: { serpapi: boolean; ebay: boolean };
   storeKind: string;
   rateLimitPerMin?: number;
+  evalSummary?: unknown;
 }
 
 const UI_DIR = new URL('./ui/', import.meta.url);
-const STATIC: Record<string, { file: string; type: string }> = {
-  '/': { file: 'index.html', type: 'text/html; charset=utf-8' },
-  '/app.js': { file: 'app.js', type: 'text/javascript; charset=utf-8' },
-  '/app.css': { file: 'app.css', type: 'text/css; charset=utf-8' },
+const TYPES: Record<string, string> = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml',
+  png: 'image/png', jpg: 'image/jpeg', woff2: 'font/woff2', ico: 'image/x-icon',
 };
 
+// Every file under src/ui is served at its own path; "/" is index.html. Loaded once at start-up.
+function loadStatic(): Map<string, { type: string; body: Buffer; cache: string }> {
+  const out = new Map<string, { type: string; body: Buffer; cache: string }>();
+  const walk = (dir: string, prefix: string): void => {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) { walk(full, `${prefix}${name}/`); continue; }
+      const ext = name.split('.').pop() ?? '';
+      if (!TYPES[ext]) continue;
+      const immutable = ext === 'woff2' || ext === 'png' || ext === 'svg';
+      out.set(`/${prefix}${name}`, { type: TYPES[ext], body: readFileSync(full), cache: immutable ? 'public, max-age=86400' : 'no-cache' });
+    }
+  };
+  walk(UI_DIR.pathname, '');
+  out.set('/', out.get('/index.html')!);
+  return out;
+}
+
 const HEADERS = {
-  'content-security-policy': "default-src 'self'; img-src https: data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+  'content-security-policy': "default-src 'self'; img-src 'self' https: data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer',
 };
@@ -61,9 +80,30 @@ const secretOk = (given: string | undefined, want: string): boolean => {
 };
 
 const summary = (a: Analysis) => ({
-  id: a.id, query: a.query, market: a.market, createdAt: a.createdAt, headline: a.headline,
-  verdict: a.arbitrage?.verdict ?? (a.buy ? 'no-reference' : 'none'), identical: a.gate.identical, considered: a.gate.considered,
+  id: a.id, query: a.query, market: a.market, createdAt: a.createdAt, headline: a.headline, currency: a.currency,
+  verdict: a.arbitrage ? (a.arbitrage.implausible ? 'unverified' : a.arbitrage.verdict) : (a.buy ? 'no-reference' : 'none'),
+  identical: a.gate.identical, considered: a.gate.considered, flagged: a.flagged?.length ?? 0,
+  thumbnail: (a.buy ?? a.identical[0])?.offer.thumbnail ?? null,
+  buy: a.buy ? { seller: a.buy.offer.seller, landedCents: a.buy.landedCents } : null,
+  netCents: a.arbitrage?.netCents ?? null,
 });
+
+// Totals over the latest analysis of each distinct product and market, so repeats are not double counted.
+export function impactOf(all: Analysis[]) {
+  const latest = new Map<string, Analysis>();
+  for (const a of [...all].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) latest.set(`${a.query.toLowerCase()}|${a.market}`, a);
+  let listings = 0, passed = 0, rejected = 0, flagged = 0, phantomCents = 0;
+  for (const a of latest.values()) {
+    listings += a.gate.considered;
+    passed += a.gate.identical;
+    rejected += a.gate.different + a.gate.uncertain;
+    for (const f of a.flagged ?? []) {
+      flagged++;
+      if (a.currency === 'USD') phantomCents += Math.max(0, f.referenceCents - f.offer.priceCents);
+    }
+  }
+  return { products: latest.size, listings, passed, rejected, flagged, phantomCents };
+}
 
 export function createApp(deps: AppDeps): Server {
   const hits = new Map<string, number[]>();
@@ -75,7 +115,7 @@ export function createApp(deps: AppDeps): Server {
     hits.set(ip, recent);
     return recent.length > limit;
   };
-  const files = new Map(Object.entries(STATIC).map(([path, s]) => [path, { type: s.type, body: readFileSync(new URL(s.file, UI_DIR), 'utf8') }]));
+  const files = loadStatic();
 
   return createServer(async (req, res) => {
     try {
@@ -85,7 +125,7 @@ export function createApp(deps: AppDeps): Server {
 
       if (req.method === 'GET' && files.has(path)) {
         const f = files.get(path)!;
-        res.writeHead(200, { 'content-type': f.type, 'cache-control': 'no-cache', ...HEADERS });
+        res.writeHead(200, { 'content-type': f.type, 'cache-control': f.cache, ...HEADERS });
         return void res.end(f.body);
       }
       if (req.method === 'GET' && path === '/health') return send(res, 200, { ok: true });
@@ -98,6 +138,9 @@ export function createApp(deps: AppDeps): Server {
           defaults: DEFAULT_ASSUMPTIONS, watchlist: deps.watchlist,
         });
       }
+
+      if (req.method === 'GET' && path === '/api/impact') return send(res, 200, impactOf(await deps.store.list<Analysis>('analyses', 300)));
+      if (req.method === 'GET' && path === '/api/eval') return send(res, 200, deps.evalSummary ?? null);
 
       if (req.method === 'GET' && path === '/api/analyses') {
         return send(res, 200, (await deps.store.list<Analysis>('analyses', 12)).map(summary));
@@ -115,6 +158,17 @@ export function createApp(deps: AppDeps): Server {
         const market = typeof body.market === 'string' ? body.market : 'us';
         if (!QUERY_OK.test(query)) return send(res, 400, { error: 'Enter a product name or set number (3 to 80 characters).' });
         if (!MARKETS[market]) return send(res, 400, { error: 'Unknown market.' });
+        if (String(req.headers.accept ?? '').includes('application/x-ndjson')) {
+          res.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no', ...HEADERS });
+          try {
+            await analyze({ query, market }, deps.agent, (ev) => res.write(JSON.stringify(ev) + '\n'));
+          } catch (e) {
+            const message = e instanceof QuotaExceeded ? 'The monthly search budget for this demo is used up. Cached results still work.' : 'The analysis failed upstream. Nothing was changed.';
+            if (!(e instanceof QuotaExceeded)) console.error('analyze failed', e);
+            res.write(JSON.stringify({ type: 'error', message }) + '\n');
+          }
+          return void res.end();
+        }
         try {
           return send(res, 200, await analyze({ query, market }, deps.agent));
         } catch (e) {

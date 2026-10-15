@@ -2,7 +2,8 @@ import { arbitrage, landed, type BuyCost } from './economics.ts';
 import { buildPrompt, passesGate, type IdentityResult, type Listing } from './identity.ts';
 import { MARKETS } from './serpapi.ts';
 import { hashKey, type Store } from './store.ts';
-import type { Analysis, ArbitrageView, Assumptions, Flagged, Gated, Offer, Priced, Proposal, SellView } from './types.ts';
+import type { Analysis, AnalyzeEvent, ArbitrageView, Assumptions, Flagged, Gated, Offer, Priced, Proposal, SellView } from './types.ts';
+import { briefingFor, type BriefingFacts } from './briefing.ts';
 
 export const DEFAULT_ASSUMPTIONS: Assumptions = {
   unknownShippingCents: 1000,
@@ -25,6 +26,8 @@ export interface AgentDeps {
   engine: Engine;
   // Typical retail price in cents for the queried product, or null when unknown. Optional.
   retail?: (query: string, currency: string) => Promise<number | null>;
+  // Plain-language note from the model, grounded in the computed numbers. Optional.
+  briefing?: (facts: BriefingFacts) => Promise<string | null>;
   store: Store;
   model: string;
   now?: () => Date;
@@ -106,7 +109,7 @@ export function splitOutliers(sorted: Priced[], retailCents: number | null = nul
 const money = (cents: number, currency: string): string =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
 
-export async function analyze(req: AnalyzeRequest, deps: AgentDeps): Promise<Analysis> {
+export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: AnalyzeEvent) => void = () => {}): Promise<Analysis> {
   const market = MARKETS[req.market];
   if (!market) throw new Error(`unknown market ${req.market}`);
   const assumptions: Assumptions = { ...DEFAULT_ASSUMPTIONS, ...req.assumptions };
@@ -115,12 +118,16 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps): Promise<Ana
 
   const { offers: raw, fromCache } = await deps.search(query, market.code, { fresh: req.fresh });
   const offers = dedupe(raw).slice(0, MAX_OFFERS);
+  emit({ type: 'search', listings: offers.length, fromCache });
 
   // The Identity Engine is the only gate. The anchor is the user's own query, treated as a sealed new item.
   const anchor: Listing = { id: 'query', title: query, condition: 'new_sealed' };
+  let done = 0;
   const gated: Gated[] = await mapLimit(offers, deps.concurrency ?? 5, async (offer) => {
     const r = await compareCached(deps, anchor, asListing(offer));
-    return { offer, verdict: passesGate(r) ? 'identical' : r.verdict === 'identical' ? 'uncertain' : r.verdict, confidence: r.confidence, reasons: r.reasons, mismatches: r.mismatches } satisfies Gated;
+    const g: Gated = { offer, quoted: r.evidence ? { brand: r.evidence.brand, brandQuote: r.evidence.brandQuoteB, idQuote: r.evidence.idB } : undefined, verdict: passesGate(r) ? 'identical' : r.verdict === 'identical' ? 'uncertain' : r.verdict, confidence: r.confidence, reasons: r.reasons, mismatches: r.mismatches };
+    emit({ type: 'gate', done: ++done, total: offers.length, verdict: g.verdict, seller: offer.seller, title: offer.title.slice(0, 90), thumbnail: offer.thumbnail });
+    return g;
   });
 
   const passed: Priced[] = gated
@@ -137,6 +144,7 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps): Promise<Ana
   // other identical offers is far more likely a data error or bait than a bargain, so it is set aside, not traded on.
   const retailCents = passed.length && deps.retail ? await deps.retail(query, market.currency).catch(() => null) : null;
   const { kept: identical, flagged } = splitOutliers(passed, retailCents);
+  emit({ type: 'sanity', flagged: flagged.length, retailCents });
 
   const buy = identical[0] ?? null;
 
@@ -159,6 +167,7 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps): Promise<Ana
     arb = { buy, sellReference: ref.offer, netCents: a.netCents, marginBps: a.marginBps, verdict: a.verdict, implausible: a.verdict === 'profitable' && a.marginBps > IMPLAUSIBLE_MARGIN_BPS, steps: a.steps };
   }
 
+  emit({ type: 'economics' });
   const cur = market.currency;
   const notes = [
     'Offers are listed as new (not second-hand) on Google Shopping; the Identity Engine still checks the title, and sellers can mis-describe.',
@@ -207,11 +216,22 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps): Promise<Ana
     sell,
     arbitrage: arb,
     headline,
+    retailCents,
+    briefing: null,
     assumptions,
     notes,
     proposalId: null,
     fromCache,
   };
+
+  if (deps.briefing && buy) {
+    emit({ type: 'briefing' });
+    analysis.briefing = await deps.briefing({
+      query, currency: cur, listings: counts.considered, identical: counts.identical, flagged: flagged.length, retailCents,
+      buy: { seller: buy.offer.seller, landedCents: buy.landedCents },
+      arbitrage: arb ? { verdict: arb.verdict, netCents: arb.netCents, marginBps: arb.marginBps, sellCents: arb.sellReference.priceCents } : null,
+    }).catch(() => null);
+  }
 
   // Every spend needs a human. The agent only ever files a pending proposal.
   if (buy) {
@@ -233,5 +253,6 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps): Promise<Ana
     analysis.proposalId = proposal.id;
   }
   await deps.store.set('analyses', analysis.id, analysis);
+  emit({ type: 'done', analysis });
   return analysis;
 }

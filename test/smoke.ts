@@ -28,6 +28,15 @@ check('UI page served with CSP', page.status === 200 && html.includes('SKUdesk')
 const status = await json('/api/status');
 check('status reports Firestore and Gemini', status.status === 200 && String(status.body.store).startsWith('firestore:') && Boolean(status.body.model), `${status.body.store}, ${status.body.model}`);
 
+const impact = await json('/api/impact');
+check('impact totals are served from stored checks', impact.status === 200 && Number.isInteger(impact.body.products) && Number.isInteger(impact.body.listings), JSON.stringify(impact.body));
+
+const ev = await json('/api/eval');
+check('evidence summary is shipped and has zero false matches', ev.status === 200 && ev.body?.falseIdentical === 0 && ev.body?.pairs > 0, `${ev.body?.pairs} pairs`);
+
+const asset = await fetch(base + '/fonts/inter.woff2');
+check('fonts and static assets are served', asset.status === 200 && (asset.headers.get('content-type') ?? '').includes('font'));
+
 const bad = await json('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: '<script>', market: 'us' }) });
 check('rejects a malformed query', bad.status === 400);
 
@@ -36,6 +45,9 @@ check('scan endpoint refuses callers without the secret', scan.status === 401);
 
 const res = await json('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query, market: 'us' }) });
 const a = res.body;
+const streamRes = await fetch(base + '/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson' }, body: JSON.stringify({ query, market: 'us' }) });
+const events = (await streamRes.text()).trim().split('\n').map((l) => JSON.parse(l));
+check('analysis streams progress and ends with a result', streamRes.status === 200 && events[0]?.type === 'search' && events.some((e) => e.type === 'gate') && events.at(-1)?.type === 'done', events.map((e) => e.type).filter((t, i, arr) => arr.indexOf(t) === i).join(' > '));
 check('analysis completes', res.status === 200 && typeof a.headline === 'string', res.status === 200 ? a.headline : String(a.error));
 if (res.status === 200) {
   check('every listing was put through the Identity Engine', a.gate.considered > 0 && a.gate.considered === a.gate.identical + a.gate.different + a.gate.uncertain, JSON.stringify(a.gate));

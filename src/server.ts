@@ -4,6 +4,8 @@ import { geminiGenerate } from './gemini.ts';
 import { MARKETS, searchShopping } from './serpapi.ts';
 import { searchEbay } from './ebay.ts';
 import { estimateRetail } from './retail.ts';
+import { briefingFor } from './briefing.ts';
+import { readFileSync } from 'node:fs';
 import { FileStore, firestoreStore, Quota, type Store } from './store.ts';
 import type { Offer } from './types.ts';
 
@@ -32,7 +34,15 @@ const watchlist = (env('WATCHLIST') ?? '').split(';').map((s) => s.trim()).filte
   return { query: query.trim(), market: market.trim() };
 });
 
+let evalSummary: unknown = null;
+try {
+  evalSummary = JSON.parse(readFileSync(new URL('../eval/summary.json', import.meta.url), 'utf8'));
+} catch {
+  // no summary shipped; the page hides the evidence band
+}
+
 const app = createApp({
+  evalSummary,
   store, quota, watchlist,
   storeKind: useFirestore ? `firestore:${database}` : 'local file',
   scanSecret: env('SCAN_SECRET') ?? '',
@@ -40,6 +50,7 @@ const app = createApp({
   agent: {
     engine, store, model,
     retail: async (query, currency) => (await estimateRetail(generate, store, query, currency)).cents,
+    briefing: (facts) => briefingFor(generate, facts),
     search: async (query, marketCode, opts) => {
       const market = MARKETS[marketCode];
       const serp = await searchShopping(query, market, { apiKey: serpKey, store, quota }, opts);

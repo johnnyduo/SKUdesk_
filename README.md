@@ -2,7 +2,7 @@
 
 One agent for retail buyers and sellers. Given a product, it finds the cheapest landed cost, prices a resale, and checks for arbitrage, **only for identical products**. A Gemini Identity Engine is the single gate: if no listing is provably the same item, or no gap survives all costs, the agent says so. A person approves every spend.
 
-Built for the Google Cloud AI Builder Cup 2026, Retail & Commerce. The concept builds on the team's earlier work; all code and assets in this repository were written new for this competition.
+Built for the Google Cloud AI Builder Cup 2026, Retail & Commerce. The concept and the visual design (stylesheets, fonts, the page's look) build on the team's earlier work. The application code, data layer, Identity Engine and evaluation were written for this competition.
 
 **Live:** https://skudesk.lol (Cloud Run service, direct URL https://skudesk-ij5vrivnta-as.a.run.app) · **Deck:** [deck/SKUdesk-deck.pdf](deck/SKUdesk-deck.pdf) · **Video script:** [video/script.md](video/script.md)
 
@@ -43,7 +43,7 @@ Cloud Run behind a small Cloudflare Worker front door for skudesk.lol ([edge/](e
 | SerpApi adapter, cache, monthly cap | Done, real data |
 | eBay adapter | Written and parser-tested on a documented-shape sample; **not run against the live API** (no keys yet) |
 | Cloud Run, Firestore, Scheduler | Deployed, smoke-tested end to end |
-| One-page UI | Done |
+| One-page UI | Done: live streaming of the gate, price ladder, evidence receipts. Visual design carried over from the team's earlier project |
 | Payments | Not built, on purpose. Approval is a decision log, not a purchase. |
 
 ## Run

@@ -49,4 +49,6 @@ for (const { pair, got, passed } of results) {
 const summary = { model, pairs: results.length, exact, falseIdentical, missedIdentical, engineErrors };
 console.log('\n' + JSON.stringify(summary));
 writeFileSync(new URL('./last-run.json', import.meta.url), JSON.stringify({ summary, results }, null, 2));
+// Committed, shipped with the app and shown on the page. Only written by a clean run.
+if (falseIdentical === 0 && engineErrors === 0) writeFileSync(new URL('./summary.json', import.meta.url), JSON.stringify({ ...summary, ranAt: new Date().toISOString(), categories: [...new Set(pairs.map((p) => p.category))] }, null, 2) + '\n');
 process.exit(falseIdentical > 0 || engineErrors > 0 ? 1 : 0);

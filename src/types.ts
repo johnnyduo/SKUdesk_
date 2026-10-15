@@ -35,8 +35,16 @@ export interface Assumptions {
   minMarginBps: number;
 }
 
+// What the model quoted out of the listing; code has already verified it is really there.
+export interface Quoted {
+  brand: string | null;
+  brandQuote: string | null;
+  idQuote: string | null;
+}
+
 export interface Gated {
   offer: Offer;
+  quoted?: Quoted;
   verdict: IdentityVerdict;
   confidence: number;
   reasons: string[];
@@ -89,6 +97,8 @@ export interface Analysis {
   sell: SellView | null;
   arbitrage: ArbitrageView | null;
   headline: string;
+  retailCents: number | null;
+  briefing: string | null;
   assumptions: Assumptions;
   notes: string[];
   proposalId: string | null;
@@ -111,3 +121,12 @@ export interface Proposal {
   status: ProposalStatus;
   decidedAt?: string;
 }
+
+// Progress events streamed to the page while an analysis runs.
+export type AnalyzeEvent =
+  | { type: 'search'; listings: number; fromCache: boolean }
+  | { type: 'gate'; done: number; total: number; verdict: 'identical' | 'different' | 'uncertain'; seller: string; title: string; thumbnail?: string }
+  | { type: 'sanity'; flagged: number; retailCents: number | null }
+  | { type: 'economics' }
+  | { type: 'briefing' }
+  | { type: 'done'; analysis: Analysis };
