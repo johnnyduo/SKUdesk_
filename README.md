@@ -32,7 +32,7 @@ The set includes real marketplace titles captured the day the gate wrongly passe
 
 ## Architecture
 
-Cloud Run (Node 24, no framework, no build step) · Firestore (database `skudesk`: cache, analyses, proposals, scans) · Cloud Scheduler (daily watchlist scan) · Secret Manager · Gemini API · SerpApi. One service account with Firestore access limited to the `skudesk` database.
+Cloud Run (Node 22.18+ running TypeScript directly, no framework, no build step, deployed from source) · Firestore (database `skudesk`: cache, analyses, proposals, scans) · Cloud Scheduler (daily watchlist scan) · Secret Manager · Gemini API · SerpApi. One service account with Firestore access limited to the `skudesk` database.
 
 ## Status
 
