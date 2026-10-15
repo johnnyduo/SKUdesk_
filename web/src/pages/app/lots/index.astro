@@ -1,0 +1,30 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/shell/Shell.astro';
+import PageHead from '../../../components/shell/PageHead.astro';
+import Explain from '../../../components/shell/Explain.astro';
+---
+<Base title="Lots | SKUdesk" description="One card per product the agent tracks, with the ladder of identical offers."><Shell>
+<PageHead title="Lots" sub="One card per product the agent tracks."/>
+<Explain>
+A lot is one product and the <b>identical offers</b> the agent found for it. Open a lot to see the price ladder, every offer's quoted evidence and the price history that the daily scan builds up.
+</Explain>
+<div class="grid3 lots" id="lots"><p class="muted">Loading…</p></div>
+</Shell></Base>
+<script>
+  import { api, h, money, thumbSrc, verdictPill } from '../../../lib/client.ts';
+  api('/api/products').then((rows) => {
+    document.getElementById('lots')!.replaceChildren(...(rows.length ? rows.map((r: any) => h('a', { class: 'card lot', href: `/app/lots/view/?key=${r.key}` },
+      h('div', { class: 'lot-img' }, thumbSrc(r.thumbnail) ? h('img', { src: thumbSrc(r.thumbnail)!, alt: '', loading: 'lazy' }) : null),
+      h('h3', {}, r.query), h('div', {}, verdictPill(r.verdict)),
+      h('p', { class: 'muted sm' }, r.buy ? `Cheapest identical ${money(r.buy.landedCents, r.currency)} at ${r.buy.seller}` : 'No identical offer found'),
+      h('p', { class: 'muted xs mono' }, `${r.identical} identical of ${r.considered} · ${r.series.length} price point${r.series.length === 1 ? '' : 's'}`))) : [h('p', { class: 'empty-state' }, 'No lots yet. Run a check on the Overview page.')]));
+  }).catch(() => {});
+</script>
+<style>
+.lot{text-decoration:none;color:inherit;gap:var(--s2)}
+.lot:hover{border-color:var(--line-strong)}
+.lot h3{font-size:var(--fs-lg)}
+.lot-img{height:150px;border-radius:var(--r-sm);background:radial-gradient(120% 120% at 50% 20%,#1d201e,#0e100f);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+.lot-img img{width:100%;height:100%;object-fit:contain;padding:8px}
+</style>

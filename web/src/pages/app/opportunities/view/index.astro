@@ -1,0 +1,18 @@
+---
+import Base from '../../../../layouts/Base.astro';
+import Shell from '../../../../components/shell/Shell.astro';
+import PageHead from '../../../../components/shell/PageHead.astro';
+---
+<Base title="Opportunity | SKUdesk" description="The full evidence behind one check." noindex><Shell>
+<PageHead title="Opportunity" sub="The full evidence behind one check." />
+<p><a href="/app/opportunities/">← All opportunities</a></p>
+<div id="view"><p class="muted">Loading…</p></div>
+</Shell></Base>
+<script>
+  import { api, h } from '../../../../lib/client.ts';
+  import { renderAnalysis } from '../../../../lib/analysis-view.ts';
+  const id = new URLSearchParams(location.search).get('id') ?? '';
+  const view = document.getElementById('view')!;
+  if (!/^[\w-]{3,40}$/.test(id)) view.replaceChildren(h('div', { class: 'alert' }, 'No check selected.'));
+  else api(`/api/analyses/${id}`).then((a) => view.replaceChildren(renderAnalysis(a))).catch(() => view.replaceChildren(h('div', { class: 'alert' }, 'That check was not found.')));
+</script>

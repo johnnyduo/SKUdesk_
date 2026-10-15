@@ -1,0 +1,39 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Deployment | SKUdesk" description="How SKUdesk runs on Google Cloud, with live checks."><Shell>
+<PageHead title="Deployment" sub="How it runs on Google Cloud, with live checks."/>
+<Explain>
+SKUdesk is plain web: a Node service on <b>Cloud Run</b>, a <b>Firestore</b> database, a <b>Cloud Scheduler</b> job and <b>Secret Manager</b> for keys. The checks below run in your browser against this very service.
+</Explain>
+<section class="card" aria-labelledby="c-h"><h2 id="c-h">Live checks</h2><div class="table-wrap"><table><thead><tr><th>Part</th><th>Role</th><th>State</th></tr></thead><tbody id="parts"></tbody></table></div></section>
+<section class="card" aria-labelledby="s-h"><h2 id="s-h">Security posture (read from this page's own response)</h2><div class="table-wrap"><table><thead><tr><th>Header</th><th>Value</th></tr></thead><tbody id="sec"></tbody></table></div>
+<ul class="steps-list">
+<li>Scripts only from this origin; no inline script runs. Listing text is untrusted and only ever set as text.</li>
+<li>Product images pass through an allow-listed proxy, so the page cannot be used as an open proxy.</li>
+<li>Rate limits per caller, a cap on concurrent checks, a monthly search budget and a body size limit.</li>
+<li>Owner controls need a key; approvals need the requester's token or the owner key.</li>
+<li>Secrets live in Secret Manager. The service account can only reach this service's database.</li>
+</ul></section>
+</Shell></Base>
+<script>
+  import { api, h, when } from '../../lib/client.ts';
+  const state = (ok: boolean | null, text: string) => h('span', { class: `pill ${ok === null ? 'warn' : ok ? 'good' : 'bad'}` }, text);
+  Promise.all([api('/health').then(() => true).catch(() => false), api('/api/status'), api('/api/scans').catch(() => []), fetch('/', { method: 'HEAD' })]).then(([healthy, st, scans, page]) => {
+    const last = scans[0]?.createdAt;
+    const rows: [string, string, HTMLElement][] = [
+      ['Cloud Run', 'API and the site, deployed from source', state(healthy, healthy ? 'live' : 'down')],
+      ['Firestore', 'Cache, checks, proposals, history, audit log', state(String(st.store).startsWith('firestore'), String(st.store).startsWith('firestore') ? 'live' : 'local file')],
+      ['Cloud Scheduler', 'Daily scan of the watchlist', state(last ? true : null, last ? `last scan ${when(last)}` : 'no scan yet')],
+      ['Secret Manager', 'Gemini, SerpApi, owner and scan keys', state(true, 'in use')],
+      ['Gemini', 'Identity gate, retail recall, grounded note', state(true, 'live')],
+    ];
+    document.getElementById('parts')!.replaceChildren(...rows.map(([a, b, c]) => h('tr', {}, h('td', {}, a), h('td', { class: 'muted' }, b), h('td', {}, c))));
+    const keys = ['content-security-policy', 'strict-transport-security', 'x-frame-options', 'x-content-type-options', 'referrer-policy', 'permissions-policy', 'cross-origin-opener-policy', 'cross-origin-resource-policy'];
+    document.getElementById('sec')!.replaceChildren(...keys.map((k) => h('tr', {}, h('td', { class: 'mono xs' }, k), h('td', { class: 'mono xs muted', style: 'overflow-wrap:anywhere' }, page.headers.get(k) ?? 'not set'))));
+  }).catch(() => {});
+</script>
+<style>.steps-list{margin:var(--s4) 0 0;padding-left:20px;display:grid;gap:var(--s2);color:var(--mut)}</style>

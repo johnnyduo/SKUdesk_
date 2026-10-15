@@ -23,10 +23,16 @@ check('health endpoint', health.status === 200 && health.body.ok === true);
 
 const page = await fetch(base + '/');
 const html = await page.text();
-check('UI page served with CSP', page.status === 200 && html.includes('SKUdesk') && Boolean(page.headers.get('content-security-policy')));
+check('landing page served with a strict policy', page.status === 200 && html.includes('SKUdesk') && /script-src 'self'/.test(page.headers.get('content-security-policy') ?? '') && Boolean(page.headers.get('strict-transport-security')));
+check('pages revalidate (a stale copy can never outlive a deploy)', page.headers.get('cache-control') === 'no-cache' || /no-cache|no-store/.test(page.headers.get('cache-control') ?? ''), page.headers.get('cache-control') ?? '');
+for (const path of ['/app/', '/show/', '/market/', '/app/opportunities/', '/app/lots/', '/app/transactions/', '/app/radar/', '/app/orders/', '/app/create/', '/app/agent/', '/app/policies/', '/app/owner/', '/app/analytics/', '/app/deploy/', '/app/integrations/', '/deck/']) {
+  const r = await fetch(base + path);
+  check(`page ${path}`, r.status === 200);
+}
+check('unknown pages return a 404 page', (await fetch(base + '/no-such-page')).status === 404);
 
 const status = await json('/api/status');
-check('status reports Firestore and Gemini', status.status === 200 && String(status.body.store).startsWith('firestore:') && Boolean(status.body.model), `${status.body.store}, ${status.body.model}`);
+check('status reports Firestore and never names the model', status.status === 200 && String(status.body.store).startsWith('firestore:') && !('model' in status.body), String(status.body.store));
 
 const impact = await json('/api/impact');
 check('impact totals are served from stored checks', impact.status === 200 && Number.isInteger(impact.body.products) && Number.isInteger(impact.body.listings), JSON.stringify(impact.body));
@@ -40,6 +46,12 @@ check('fonts and static assets are served', asset.status === 200 && (asset.heade
 const bad = await json('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: '<script>', market: 'us' }) });
 check('rejects a malformed query', bad.status === 400);
 
+const owner = await json('/api/owner/check');
+check('owner endpoints refuse callers without the key', owner.status === 401);
+const putLimits = await json('/api/limits', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ paused: true }) });
+check('the kill switch cannot be pulled without the owner key', putLimits.status === 401);
+const img = await fetch(base + '/api/img?u=' + encodeURIComponent('https://example.com/a.png'));
+check('the image proxy refuses hosts that are not allow-listed', img.status === 400);
 const scan = await json('/api/jobs/scan', { method: 'POST' });
 check('scan endpoint refuses callers without the secret', scan.status === 401);
 
@@ -56,8 +68,13 @@ if (res.status === 200) {
   if (a.proposalId) {
     const list = await json('/api/proposals');
     const p = (list.body as unknown as { id: string; status: string }[]).find((x) => x.id === a.proposalId);
-    check('the proposal is stored and not yet approved', Boolean(p) && ['pending', 'approved', 'rejected'].includes(p!.status), p?.status);
+    check('the proposal is stored and not yet decided', Boolean(p) && ['pending', 'approved', 'rejected'].includes(p!.status), p?.status);
   }
+  if (a.proposalId) {
+    const noToken = await json(`/api/proposals/${a.proposalId}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: 'approved' }) });
+    check('a decision without the requester token is refused', noToken.status === 403);
+  }
+  check('the public result never names the model', !JSON.stringify(a).match(/gemini-\d/i));
   const again = await json(`/api/analyses/${a.id}`);
   check('the analysis is stored in Firestore and readable', again.status === 200 && again.body.id === a.id);
 }

@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { analyze, type AgentDeps } from '../src/agent.ts';
 import { MemoryStore } from '../src/store.ts';
+import { DEFAULT_LIMITS } from '../src/domain.ts';
 import type { IdentityResult, Listing } from '../src/identity.ts';
-import type { Offer, Proposal } from '../src/types.ts';
+import type { Analysis, Offer, Proposal } from '../src/types.ts';
 
 const offer = (seller: string, title: string, priceCents: number, over: Partial<Offer> = {}): Offer => ({
   id: `${seller}-${priceCents}`, title, seller, channel: seller.startsWith('eBay') || seller === 'Mercari' ? 'marketplace' : 'retailer',
@@ -92,14 +93,58 @@ test('a buy files a pending proposal and never anything else', async () => {
   assert.equal(p?.landedCents, 10000);
 });
 
-test('repeating an analysis does not reset a decided proposal', async () => {
+test('each analysis files its own proposal; a decided one stays decided', async () => {
   const d = deps([offer('LEGO.com', 'SET', 10000)]);
+  let n = 0;
+  d.now = () => new Date(Date.UTC(2026, 9, 16, 0, 0, ++n));
   const first = await analyze({ query: 'q', market: 'us' }, d);
   const p = (await d.store.get<Proposal>('proposals', first.proposalId!))!;
   await d.store.set('proposals', p.id, { ...p, status: 'approved' });
   const second = await analyze({ query: 'q', market: 'us' }, d);
-  assert.equal(second.proposalId, first.proposalId);
+  assert.notEqual(second.proposalId, first.proposalId);
   assert.equal((await d.store.get<Proposal>('proposals', p.id))?.status, 'approved');
+});
+
+test('the requester gets a decision token and only its hash is stored', async () => {
+  const d = deps([offer('LEGO.com', 'SET', 10000)]);
+  const a = await analyze({ query: 'q', market: 'us' }, d);
+  assert.match(a.decisionToken ?? '', /^[0-9a-f]{48}$/);
+  const p = (await d.store.get<Proposal>('proposals', a.proposalId!))!;
+  assert.ok(p.tokenHash && p.tokenHash !== a.decisionToken);
+  const stored = await d.store.get<Analysis>('analyses', a.id);
+  assert.equal(stored?.decisionToken, undefined);
+});
+
+test('a scheduled scan files a proposal without any token', async () => {
+  const d = deps([offer('LEGO.com', 'SET', 10000)]);
+  const a = await analyze({ query: 'q', market: 'us', system: true }, d);
+  assert.equal(a.decisionToken, undefined);
+  assert.equal((await d.store.get<Proposal>('proposals', a.proposalId!))?.origin, 'scan');
+});
+
+test('a paused agent files no proposal', async () => {
+  const d = deps([offer('LEGO.com', 'SET', 10000)], { limits: async () => ({ ...DEFAULT_LIMITS, paused: true }) });
+  const a = await analyze({ query: 'q', market: 'us' }, d);
+  assert.equal(a.proposalId, null);
+  assert.ok(a.notes.some((n) => /paused/.test(n)));
+});
+
+test('a buy above the per-buy limit is filed as blocked', async () => {
+  const d = deps([offer('LEGO.com', 'SET', 50000)], { limits: async () => ({ ...DEFAULT_LIMITS, maxSpendCents: 20000 }) });
+  const a = await analyze({ query: 'q', market: 'us' }, d);
+  const p = (await d.store.get<Proposal>('proposals', a.proposalId!))!;
+  assert.match(p.blockedReason ?? '', /per-buy limit/);
+});
+
+test('the margin floor comes from the owner limits', async () => {
+  const d = deps([offer('Store', 'SET', 25000), offer('eBay - z', 'SET', 33000)], { limits: async () => ({ ...DEFAULT_LIMITS, minMarginBps: 500 }) });
+  const a = await analyze({ query: 'q', market: 'us' }, d);
+  assert.equal(a.arbitrage?.verdict, 'profitable');
+});
+
+test('the public analysis never names the model', async () => {
+  const a = await analyze({ query: 'q', market: 'us' }, deps([offer('A', 'SET', 100)], { model: 'secret-model-name' }));
+  assert.equal(a.model, 'Gemini');
 });
 
 test('identity verdicts are cached across analyses', async () => {

@@ -30,13 +30,22 @@ Live progress while a check runs (each listing lights up green, red or amber as 
 
 ## Identity eval
 
-`npm run eval` sends 43 hand-labelled pairs to the real Gemini API (`gemini-3.5-flash-lite`) and reports the number that must be zero: a pair that should not match but passed the gate. Current result: **0 false-identical**, 41 exact, 2 safe disagreements (labelled different, answered uncertain).
+`npm run eval` sends 43 hand-labelled pairs to the real Gemini API (the model is set by `GEMINI_MODEL` in `.env`) and reports the number that must be zero: a pair that should not match but passed the gate. Current result: **0 false-identical**, 41 exact, 2 safe disagreements (labelled different, answered uncertain).
 
 The set includes real marketplace titles captured the day the gate wrongly passed them. That is how the evidence check was found: the model credited listings with a "LEGO" brand they never wrote. Limits, stated plainly: most listing texts are hand-written to look like marketplace titles; labels come from LEGO set numbers; no GTIN pairs and no image inputs yet; 43 pairs is a small sample.
 
+## Owner mode and security
+
+Anyone can run a check and read every page. Anything that changes the agent needs the **owner key** (kept in Secret Manager, entered once per tab, compared in constant time): the per-buy limit, the margin floor, the kill switch, the watchlist and manual scans.
+
+- Approvals need the requester's one-time token (shown only to whoever ran the check, stored as a hash) or the owner key. A proposal above the per-buy limit is blocked; while the agent is paused nothing can be approved.
+- Strict policy: scripts only from the site's own origin, no inline script, listing text only ever set as text. Product images go through an allow-listed proxy.
+- Rate limits per caller (the caller address is trusted only when it comes from our own edge with a shared secret), a cap on concurrent checks, a monthly search budget, a request size limit, and an audit log of every change and decision.
+- The model name is never sent to the browser.
+
 ## Architecture
 
-Cloud Run behind a small Cloudflare Worker front door for skudesk.lol ([edge/](edge/), forwards requests only) · Cloud Run (Node 22.18+ running TypeScript directly, no framework, no build step, deployed from source) · Firestore (database `skudesk`: cache, analyses, proposals, scans) · Cloud Scheduler (daily watchlist scan) · Secret Manager · Gemini API · SerpApi. One service account with Firestore access limited to the `skudesk` database.
+A static Astro site ([web/](web/)) served by a small Node service on Cloud Run (TypeScript run directly, no framework, deployed from source), behind a Cloudflare Worker front door for skudesk.lol ([edge/](edge/), forwards requests only) · Firestore (database `skudesk`: cache, analyses, proposals, scans) · Cloud Scheduler (daily watchlist scan) · Secret Manager · Gemini API · SerpApi. One service account with Firestore access limited to the `skudesk` database.
 
 ## Status
 
@@ -47,7 +56,7 @@ Cloud Run behind a small Cloudflare Worker front door for skudesk.lol ([edge/](e
 | SerpApi adapter, cache, monthly cap | Done, real data |
 | eBay adapter | Written and parser-tested on a documented-shape sample; **not run against the live API** (no keys yet) |
 | Cloud Run, Firestore, Scheduler | Deployed, smoke-tested end to end |
-| One-page UI | Done: live streaming of the gate, price ladder, evidence receipts. Visual design carried over from the team's earlier project |
+| Site ([web/](web/)) | Done: landing with a 3D ring of real checked products, Desk, Opportunities, Lots, Decisions, Radar, Approvals, Agent decision replay, Offer market, Deploy agent, Limits with simulator, Owner console, Run metrics, Deployment, Dependencies. Visual design carried over from the team's earlier project |
 | Payments | Not built, on purpose. Approval is a decision log, not a purchase. |
 
 ## Run
@@ -59,6 +68,7 @@ cp .env.example .env     # GEMINI_API_KEY, GEMINI_MODEL, SERPAPI_KEY
 npm install
 npm test                 # unit tests, no network
 npm run eval             # real Gemini calls
+npm run web:build        # build the site (Astro) into web/dist
 npm start                # local server on :8080, file-backed store
 npm run smoke -- <url>   # end-to-end check of a deployed service
 ./deploy/deploy.sh       # Cloud Run + Firestore + Scheduler (see the script header)

@@ -1,0 +1,37 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Agent decision | SKUdesk" description="Watch the agent work through one real check, step by step."><Shell>
+<PageHead title="Agent decision" sub="Watch the agent work through one real check."/>
+<Explain>
+This replays a <b>real, stored check</b> line by line: the search, Gemini's verdict on each listing, the evidence code verified, the prices it refused to trust, the economics, and the proposal it filed. Pick any check below.
+</Explain>
+<div class="card formrow"><div class="field grow"><label class="label" for="pick">Check to replay</label><select id="pick"></select></div></div>
+<div id="player"><p class="muted">Loading…</p></div>
+</Shell></Base>
+<script>
+  import { api, h, when } from '../../lib/client.ts';
+  import { mountPlayer } from '../../lib/player.ts';
+  const pick = document.getElementById('pick') as HTMLSelectElement;
+  const player = document.getElementById('player')!;
+  const load = (id: string) => api(`/api/analyses/${id}`).then((a) => mountPlayer(player, a)).catch(() => player.replaceChildren(h('div', { class: 'alert' }, 'Could not load that check.')));
+  api('/api/analyses?n=40').then((rows: any[]) => {
+    if (!rows.length) { player.replaceChildren(h('p', { class: 'empty-state' }, 'No checks yet. Run one on the desk first.')); return; }
+    pick.replaceChildren(...rows.map((r) => h('option', { value: r.id }, `${r.query} · ${when(r.createdAt)}`)));
+    const want = new URLSearchParams(location.search).get('id');
+    if (want && rows.some((r) => r.id === want)) pick.value = want;
+    pick.addEventListener('change', () => void load(pick.value));
+    void load(pick.value);
+  }).catch(() => {});
+</script>
+<style>
+.pl-card{display:grid;grid-template-columns:auto 1fr;gap:var(--s4);align-items:center}
+.pl-t{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.thumb.lg{width:96px;height:96px}
+.console p{margin:0;overflow-wrap:anywhere}
+.pl-good{color:var(--green)}.pl-bad{color:var(--red)}.pl-warn{color:var(--amber)}.pl-info{color:var(--txt)}
+.stages{margin-top:var(--s4)}
+</style>

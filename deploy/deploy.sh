@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 set -a; source .env; set +a
-: "${GCP_PROJECT:?}" "${GEMINI_API_KEY:?}" "${GEMINI_MODEL:?}" "${SERPAPI_KEY:?}"
+: "${GCP_PROJECT:?}" "${GEMINI_API_KEY:?}" "${GEMINI_MODEL:?}" "${SERPAPI_KEY:?}" "${OWNER_KEY:?}" "${EDGE_SECRET:?}"
 P="$GCP_PROJECT"
 REGION="${REGION:-asia-southeast1}"
 DB="${FIRESTORE_DATABASE:-skudesk}"
@@ -33,6 +33,8 @@ SCAN_SECRET="${SCAN_SECRET:-$(openssl rand -hex 24)}"
 put_secret skudesk-gemini-key "$GEMINI_API_KEY"
 put_secret skudesk-serpapi-key "$SERPAPI_KEY"
 put_secret skudesk-scan-secret "$SCAN_SECRET"
+put_secret skudesk-owner-key "$OWNER_KEY"
+put_secret skudesk-edge-secret "$EDGE_SECRET"
 if [ -n "${EBAY_CLIENT_ID:-}" ] && [ -n "${EBAY_CLIENT_SECRET:-}" ]; then
   put_secret skudesk-ebay-id "$EBAY_CLIENT_ID"; put_secret skudesk-ebay-secret "$EBAY_CLIENT_SECRET"
   EBAY_SECRETS=",EBAY_CLIENT_ID=skudesk-ebay-id:latest,EBAY_CLIENT_SECRET=skudesk-ebay-secret:latest"
@@ -41,10 +43,10 @@ else EBAY_SECRETS=""; fi
 echo "== cloud run (built from source, no Dockerfile)"
 gcloud run deploy skudesk --source . --region "$REGION" --project "$P" \
   --service-account "$SA" --allow-unauthenticated \
-  --min-instances 0 --max-instances 2 --cpu 1 --memory 512Mi --timeout 120 \
-  --set-env-vars "GCP_PROJECT=${P},FIRESTORE_DATABASE=${DB},GEMINI_MODEL=${GEMINI_MODEL},MONTHLY_SEARCH_CAP=${MONTHLY_SEARCH_CAP:-100}" \
+  --min-instances 0 --max-instances 3 --cpu 1 --memory 512Mi --timeout 120 --concurrency 40 \
+  --set-env-vars "GCP_PROJECT=${P},FIRESTORE_DATABASE=${DB},GEMINI_MODEL=${GEMINI_MODEL},MONTHLY_SEARCH_CAP=${MONTHLY_SEARCH_CAP:-100},SCAN_MAX=${SCAN_MAX:-3}" \
   --set-env-vars "^@^WATCHLIST=${WATCHLIST}" \
-  --set-secrets "GEMINI_API_KEY=skudesk-gemini-key:latest,SERPAPI_KEY=skudesk-serpapi-key:latest,SCAN_SECRET=skudesk-scan-secret:latest${EBAY_SECRETS}"
+  --set-secrets "GEMINI_API_KEY=skudesk-gemini-key:latest,SERPAPI_KEY=skudesk-serpapi-key:latest,SCAN_SECRET=skudesk-scan-secret:latest,OWNER_KEY=skudesk-owner-key:latest,EDGE_SECRET=skudesk-edge-secret:latest${EBAY_SECRETS}"
 URL="$(gcloud run services describe skudesk --region "$REGION" --project "$P" --format 'value(status.url)')"
 
 echo "== scheduler"

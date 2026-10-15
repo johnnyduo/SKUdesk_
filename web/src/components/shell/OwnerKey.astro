@@ -1,0 +1,41 @@
+---
+// Owner mode: the owner key unlocks the controls that change anything (limits, kill switch, watches). It is kept in this
+// tab's sessionStorage only and sent as a header; the server compares it in constant time.
+---
+<details class="ownerkey" id="ownerkey">
+<summary class="btn ghost ok-btn" id="ok-summary"><span class="ok-dot" aria-hidden="true"></span><span id="ok-label">Owner: locked</span></summary>
+<form class="ok-pop" id="ok-form" autocomplete="off">
+<label class="label" for="ok-input">Owner key</label>
+<input id="ok-input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste the owner key" />
+<div class="actions"><button class="btn" type="submit">Unlock</button><button class="btn ghost" type="button" id="ok-lock" hidden>Lock</button></div>
+<p class="note" id="ok-msg" role="status"></p>
+</form>
+</details>
+<script>
+  import { $, checkOwner, setOwnerKey } from '../../lib/client.ts';
+  const label = $('ok-label'), msg = $('ok-msg'), lock = $('ok-lock');
+  const det = $('ownerkey') as HTMLDetailsElement;
+  const paint = (on: boolean) => { label.textContent = on ? 'Owner: unlocked' : 'Owner: locked'; document.documentElement.classList.toggle('is-owner', on); lock.hidden = !on; $('ok-summary').classList.toggle('on', on); };
+  checkOwner().then(paint);
+  $('ok-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = $('ok-input') as HTMLInputElement;
+    setOwnerKey(input.value.trim());
+    input.value = '';
+    const ok = await checkOwner();
+    if (!ok) setOwnerKey('');
+    paint(ok);
+    msg.textContent = ok ? 'Unlocked for this tab.' : 'That key was not accepted.';
+    if (ok) { det.open = false; dispatchEvent(new CustomEvent('skudesk:owner')); }
+  });
+  lock.addEventListener('click', () => { setOwnerKey(''); paint(false); msg.textContent = 'Locked.'; dispatchEvent(new CustomEvent('skudesk:owner')); });
+</script>
+<style>
+.ownerkey{position:relative}
+.ownerkey summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:var(--s2);min-height:var(--tap);padding:0 var(--s4);font-size:var(--fs-sm)}
+.ownerkey summary::-webkit-details-marker{display:none}
+.ok-dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.ownerkey summary.on .ok-dot{background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.ok-pop{position:absolute;right:0;top:calc(100% + var(--s2));width:min(320px,86vw);background:var(--elev);border:1px solid var(--line);border-radius:var(--r);padding:var(--s4);display:grid;gap:var(--s3);z-index:40;box-shadow:0 24px 60px -20px rgba(0,0,0,.8)}
+@media(max-width:600px){.ownerkey summary span#ok-label{display:none}}
+</style>

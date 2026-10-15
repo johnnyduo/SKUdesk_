@@ -1,0 +1,43 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/shell/Shell.astro';
+import PageHead from '../../../components/shell/PageHead.astro';
+import Explain from '../../../components/shell/Explain.astro';
+---
+<Base title="Opportunities | SKUdesk" description="Every product the agent has checked, ranked by what it found."><Shell>
+<PageHead title="Opportunities" sub="Every product the agent has checked, ranked by what it found."/>
+<Explain>
+Each row is the latest check of one product. <b>Arbitrage clears</b> only when the margin survives every cost; most rows are honest "no" answers, and that is the point. Click a row to see the evidence behind it.
+</Explain>
+<section class="card" aria-labelledby="op-h">
+<h2 id="op-h">Checked products <span class="pill" id="op-count"></span></h2>
+<div class="pills" id="filters" role="group" aria-label="Filter by verdict"></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Product</th><th>Verdict</th><th class="num">Cheapest identical</th><th class="num">Resale net</th><th class="num">Identical</th><th>Checked</th></tr></thead>
+<tbody id="rows"><tr><td colspan="6" class="muted">Loading…</td></tr></tbody>
+</table></div>
+</section>
+</Shell></Base>
+<script>
+  import { api, h, money, pct, thumbSrc, verdictPill, when } from '../../../lib/client.ts';
+  const order: Record<string, number> = { profitable: 0, thin: 1, unverified: 2, loss: 3, 'no-reference': 4, none: 5 };
+  let rows: any[] = [];
+  let filter = 'all';
+  function draw() {
+    const shown = rows.filter((r) => filter === 'all' || r.verdict === filter);
+    document.getElementById('op-count')!.textContent = `${shown.length} of ${rows.length}`;
+    document.getElementById('rows')!.replaceChildren(...(shown.length ? shown.map((r) => h('tr', { class: 'row-link' },
+      h('td', {}, h('a', { href: `/app/opportunities/view/?id=${r.id}`, class: 'row' }, h('span', { class: 'thumb', 'aria-hidden': 'true' }, thumbSrc(r.thumbnail) ? h('img', { src: thumbSrc(r.thumbnail)!, alt: '', loading: 'lazy', width: 32, height: 32 }) : null), h('span', {}, r.query))),
+      h('td', {}, verdictPill(r.verdict)),
+      h('td', { class: 'num mono' }, r.buy ? `${money(r.buy.landedCents, r.currency)} · ${r.buy.seller}` : '—'),
+      h('td', { class: 'num mono' }, r.netCents === null ? '—' : `${money(r.netCents, r.currency)}${r.marginBps === null ? '' : ` (${pct(r.marginBps)})`}`),
+      h('td', { class: 'num mono' }, `${r.identical}/${r.considered}`),
+      h('td', { class: 'mono xs muted nowrap' }, when(r.createdAt)))) : [h('tr', {}, h('td', { colspan: 6, class: 'muted' }, 'Nothing here yet. Run a check on the Overview page.'))]));
+  }
+  api('/api/products').then((p) => {
+    rows = p.sort((a: any, b: any) => (order[a.verdict] ?? 9) - (order[b.verdict] ?? 9) || (b.netCents ?? -1e12) - (a.netCents ?? -1e12));
+    const kinds = ['all', ...new Set(rows.map((r) => r.verdict))] as string[];
+    document.getElementById('filters')!.replaceChildren(...kinds.map((k) => h('button', { type: 'button', class: `pill${k === filter ? ' ok' : ''}`, on: { click: (e) => { filter = k; document.querySelectorAll('#filters .pill').forEach((b) => b.classList.remove('ok')); (e.currentTarget as HTMLElement).classList.add('ok'); draw(); } } }, k === 'all' ? 'all' : k)));
+    draw();
+  }).catch(() => { document.getElementById('rows')!.replaceChildren(h('tr', {}, h('td', { colspan: 6, class: 'muted' }, 'Could not load the checks.'))); });
+</script>

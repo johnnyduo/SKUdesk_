@@ -1,0 +1,63 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Limits | SKUdesk" description="The owner's limits on the agent, and a what-if simulator."><Shell>
+<PageHead title="Limits" sub="The owner's limits, and a what-if simulator."/>
+<Explain>
+The server applies these limits to every check. A proposal above the <b>per-buy limit</b> is blocked, the <b>margin floor</b> decides what counts as a real gap, and the <b>kill switch</b> stops scans, new proposals and approvals. Changing them needs owner mode.
+</Explain>
+<section class="card" aria-labelledby="lim-h"><h2 id="lim-h">Current limits</h2>
+<form id="form" class="formrow" autocomplete="off">
+<div class="field"><label class="label" for="max">Per-buy limit (USD)</label><input id="max" type="number" min="1" step="1" disabled></div>
+<div class="field"><label class="label" for="floor">Margin floor (%)</label><input id="floor" type="number" min="0" max="200" step="0.5" disabled></div>
+<button class="btn" id="save" type="submit" disabled>Save limits</button>
+</form>
+<p class="muted sm" id="lock-msg">Unlock owner mode (top right) to change the limits.</p>
+<p class="note" id="msg" role="status"></p>
+</section>
+<section class="card" aria-labelledby="sim-h"><h2 id="sim-h">What-if simulator</h2>
+<p class="muted sm">Try any buy and sell price. The server runs the same economics as a real check, against the current limits.</p>
+<form id="sim" class="formrow" autocomplete="off">
+<div class="field"><label class="label" for="buy">Buy price (USD)</label><input id="buy" type="number" min="1" step="0.01" value="200"></div>
+<div class="field"><label class="label" for="ship">Shipping (USD)</label><input id="ship" type="number" min="0" step="0.01" value="0"></div>
+<div class="field"><label class="label" for="sell">Resale price (USD)</label><input id="sell" type="number" min="1" step="0.01" value="320"></div>
+<button class="btn" type="submit">Simulate</button>
+</form>
+<div id="result" class="stack"></div>
+</section>
+</Shell></Base>
+<script>
+  import { $, api, h, money, pct, postJson } from '../../lib/client.ts';
+  const inputs = ['max', 'floor', 'save'].map((id) => $(id) as HTMLInputElement);
+  async function load() {
+    const lim = await api('/api/limits');
+    ($('max') as HTMLInputElement).value = String(lim.maxSpendCents / 100);
+    ($('floor') as HTMLInputElement).value = String(lim.minMarginBps / 100);
+    const owner = document.documentElement.classList.contains('is-owner');
+    inputs.forEach((i) => { i.disabled = !owner; });
+    $('lock-msg').hidden = owner;
+  }
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await postJson('/api/limits', { maxSpendCents: Math.round(Number(($('max') as HTMLInputElement).value) * 100), minMarginBps: Math.round(Number(($('floor') as HTMLInputElement).value) * 100) }, { owner: true, method: 'PUT' });
+      $('msg').textContent = 'Saved. The next check uses the new limits.'; await load();
+    } catch (err) { $('msg').textContent = (err as Error).message; }
+  });
+  $('sim').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const c = (id: string) => Math.round(Number(($(id) as HTMLInputElement).value) * 100);
+    try {
+      const r = await postJson('/api/simulate', { buyCents: c('buy'), shippingCents: c('ship'), sellCents: c('sell') });
+      $('result').replaceChildren(
+        h('div', { class: `verdict ${r.verdict === 'profitable' ? 'good' : r.verdict === 'thin' ? 'warn' : 'none'}` }, h('span', { class: 'v-tag' }, r.verdict), h('p', { class: 'v-text' }, `Net ${money(r.netCents)} (${pct(r.marginBps)}) after all costs`), h('p', { class: 'v-sub' }, `Landed ${money(r.landedCents)} · margin floor ${pct(r.minMarginBps)} · ${r.withinSpendLimit ? 'within' : 'ABOVE'} the ${money(r.maxSpendCents)} per-buy limit`)),
+        h('table', { class: 'kv' }, h('tbody', {}, r.steps.filter((s: any) => s.cents !== 0 || s.label === 'price').map((s: any) => h('tr', { class: /fee|reserve|outbound/.test(s.label) ? 'neg' : '' }, h('td', {}, s.label), h('td', {}, money(s.cents)))))));
+    } catch (err) { $('result').replaceChildren(h('div', { class: 'alert' }, (err as Error).message)); }
+  });
+  void load().catch(() => {});
+  addEventListener('skudesk:owner', () => void load());
+  setTimeout(() => void load(), 700);
+</script>

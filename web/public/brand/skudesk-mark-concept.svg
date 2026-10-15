@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SKUdesk logo mark">
+  <title>SKUdesk — competing offers meet at one product</title>
+  <path d="M17 28 45 64 17 100" fill="none" stroke="#CCFF00" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="m111 28-28 36 28 36" fill="none" stroke="#016BE5" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter"/>
+  <rect x="49" y="48" width="30" height="32" rx="2" fill="#080908" stroke="#F5F6F2" stroke-width="5"/>
+  <path d="M49 58h30M64 49v9" fill="none" stroke="#F5F6F2" stroke-width="4"/>
+</svg>

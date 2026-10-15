@@ -1,0 +1,31 @@
+---
+// What the gate has caught: live totals from the checks stored for the agent. Filled in at run time.
+---
+<section class="ls-sec tr" aria-labelledby="tr-h"><div class="lp-wrap">
+<h2 class="ls-h" id="tr-h">What the gate has caught.</h2>
+<ul class="tr-grid" id="impact"></ul>
+<p class="tr-foot">Live totals from the stored checks, counting the latest check of each product so repeats are not double counted. "Fake discount blocked" is the gap between each set-aside price and the price Gemini believes is real.</p>
+</div></section>
+
+<script>
+  import { api, int, money0, tile } from '../../lib/client.ts';
+  api('/api/impact').then((i) => {
+    document.getElementById('impact')!.replaceChildren(
+      tile(i.products, 'Products checked'),
+      tile(i.listings, 'Listings screened'),
+      tile(i.rejected, 'Rejected by the gate', 'not the same item'),
+      tile(i.flagged, 'Bad prices set aside', 'same item, unbelievable price'),
+      tile(i.phantomCents, 'Fake discount blocked', 'below the believable price', (c) => money0(c)));
+  }).catch(() => {});
+</script>
+
+<style>
+.tr-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s4)}
+.tr-tile{display:grid;gap:var(--s2);align-content:start;padding:var(--s5);border:1px solid var(--line);border-radius:var(--s4);background:linear-gradient(180deg,rgba(20,22,20,.9),rgba(12,14,13,.9))}
+.tr-v{font-family:var(--serif);font-weight:400;font-size:clamp(34px,3.6vw,52px);line-height:1;letter-spacing:-.02em;color:var(--neon);font-variant-numeric:tabular-nums}
+.tr-k{font-family:var(--mono);font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.tr-sub{color:var(--dim);font-size:var(--fs-sm);line-height:1.4}
+.tr-foot{margin:var(--s6) 0 0;color:var(--dim);font-size:var(--fs-sm)}
+@media(max-width:1100px){.tr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.tr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>

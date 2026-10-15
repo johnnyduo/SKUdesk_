@@ -1,0 +1,42 @@
+---
+// The evaluation band: hand-labelled pairs run against the real model. Numbers come from the shipped evaluation summary.
+---
+<section id="evidence" class="ls-sec ev" aria-labelledby="ev-h" hidden><div class="lp-wrap">
+<h2 class="ls-h" id="ev-h">The number that matters is zero.</h2>
+<p class="ev-lead" id="ev-lead">Hand-labelled product pairs, run against the real model.</p>
+<ul class="tr-grid ev-grid" id="ev-grid"></ul>
+<div class="limits">
+<h3>Said plainly</h3>
+<ul>
+<li>Most listing texts are written to look like marketplace titles. Five are real titles captured live, including the ones that first slipped through.</li>
+<li>Labels come from LEGO set numbers. There are no barcode pairs and no image inputs yet.</li>
+<li>The set is small. Zero false matches here is a floor on the work, not a guarantee.</li>
+<li>Prices are asking prices. The retail price used to spot bad data is recalled by Gemini, not a live quote.</li>
+<li>Approving a purchase records a decision. SKUdesk holds no payment details and moves no money.</li>
+</ul>
+</div>
+</div></section>
+
+<script>
+  import { api, tile } from '../../lib/client.ts';
+  api('/api/eval').then((ev) => {
+    if (!ev) return;
+    const safe = ev.pairs - ev.exact - ev.falseIdentical - ev.missedIdentical;
+    document.getElementById('ev-lead')!.textContent = `${ev.pairs} hand-labelled product pairs, run against the real model on ${new Date(ev.ranAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}.`;
+    document.getElementById('ev-grid')!.replaceChildren(
+      tile(ev.falseIdentical, 'False matches', 'passed the gate but should not have', undefined, true),
+      tile(ev.pairs, 'Labelled pairs'),
+      tile(ev.exact, 'Exact answers', `of ${ev.pairs}`),
+      tile(safe, 'Safe disagreements', 'labelled different, answered uncertain'));
+    (document.getElementById('evidence') as HTMLElement).hidden = false;
+  }).catch(() => {});
+</script>
+
+<style>
+.ev-lead{max-width:62ch;margin:calc(var(--s5) * -1) 0 var(--s8);color:var(--mut);font-size:var(--fs-lg);line-height:1.5}
+.ev-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1100px){.ev-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.limits{margin-top:var(--s8);padding:var(--s5);border:1px solid var(--line);border-radius:var(--r);background:var(--elev)}
+.limits h3{font-size:var(--fs-lg);margin-bottom:var(--s3)}
+.limits ul{margin:0;padding-left:20px;display:grid;gap:var(--s2);color:var(--mut)}
+</style>

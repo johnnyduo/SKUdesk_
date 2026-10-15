@@ -6,6 +6,7 @@ import { join } from 'node:path';
 export interface Store {
   get<T>(coll: string, id: string): Promise<T | undefined>;
   set(coll: string, id: string, doc: object): Promise<void>;
+  delete(coll: string, id: string): Promise<void>;
   // Newest first by the document's createdAt, when it has one.
   list<T>(coll: string, limit: number): Promise<T[]>;
 }
@@ -22,6 +23,10 @@ export class MemoryStore implements Store {
   }
   async set(coll: string, id: string, doc: object): Promise<void> {
     this.data.set(`${coll}/${id}`, structuredClone(doc));
+    await this.persist();
+  }
+  async delete(coll: string, id: string): Promise<void> {
+    this.data.delete(`${coll}/${id}`);
     await this.persist();
   }
   async list<T>(coll: string, limit: number): Promise<T[]> {
@@ -54,6 +59,9 @@ export async function firestoreStore(projectId: string, databaseId: string): Pro
     },
     async set(coll: string, id: string, doc: object) {
       await db.collection(coll).doc(id).set(JSON.parse(JSON.stringify(doc)));
+    },
+    async delete(coll: string, id: string) {
+      await db.collection(coll).doc(id).delete();
     },
     async list<T>(coll: string, limit: number) {
       const snap = await db.collection(coll).orderBy('createdAt', 'desc').limit(limit).get();

@@ -8,3 +8,9 @@ node_modules/
 eval/last-run.json
 video/*.mp4
 deploy/last-url.txt
+web/dist/
+web/.astro/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.shots/

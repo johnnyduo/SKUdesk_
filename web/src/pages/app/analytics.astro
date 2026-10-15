@@ -1,0 +1,35 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Run metrics | SKUdesk" description="What the gate has caught and how the evaluation went."><Shell>
+<PageHead title="Run metrics" sub="What the gate has caught, and how the evaluation went."/>
+<Explain>
+Totals come from the checks stored for the agent (the latest check per product). The evaluation is a set of hand-labelled product pairs run against the real model; the number that must be zero is <b>false matches</b>.
+</Explain>
+<section class="card" aria-labelledby="g-h"><h2 id="g-h">The gate</h2><ul class="tr-grid" id="impact"></ul><div class="split" id="split" aria-hidden="true"></div><p class="muted sm" id="split-note"></p></section>
+<section class="card" aria-labelledby="v-h"><h2 id="v-h">Verdicts</h2><div id="verdicts" class="pills"></div></section>
+<section class="card" aria-labelledby="e-h"><h2 id="e-h">Evaluation</h2><p class="muted sm" id="ev-lead">Loading…</p><ul class="tr-grid" id="ev-grid"></ul>
+<p class="muted sm">Most listing texts are written to look like marketplace titles; five are real titles captured live. Labels come from LEGO set numbers. No barcode pairs and no image inputs yet. 43 pairs is a small sample, not a guarantee.</p></section>
+</Shell></Base>
+<script>
+  import { api, h, money0, tile, verdictPill } from '../../lib/client.ts';
+  Promise.all([api('/api/impact'), api('/api/products'), api('/api/eval')]).then(([i, rows, ev]) => {
+    document.getElementById('impact')!.replaceChildren(tile(i.products, 'Products checked'), tile(i.listings, 'Listings screened'), tile(i.passed, 'Passed as identical'), tile(i.flagged, 'Bad prices set aside'), tile(i.phantomCents, 'Fake discount blocked', undefined, (c) => money0(c)));
+    const total = Math.max(i.listings, 1);
+    const seg = (c: string, n: number) => { const el = h('i', { class: c }); el.style.width = `${(n / total) * 100}%`; return el; };
+    document.getElementById('split')!.replaceChildren(seg('a', i.passed), seg('b', i.rejected));
+    document.getElementById('split-note')!.textContent = `${i.passed} of ${i.listings} listings passed (${((i.passed / total) * 100).toFixed(1)}%). The rest were different products, imitations, accessories, used items or not provable.`;
+    const counts = new Map<string, number>();
+    rows.forEach((r: any) => counts.set(r.verdict, (counts.get(r.verdict) ?? 0) + 1));
+    document.getElementById('verdicts')!.replaceChildren(...[...counts].map(([v, n]) => h('span', { class: 'row' }, verdictPill(v), ` × ${n}`)));
+    if (ev) {
+      const safe = ev.pairs - ev.exact - ev.falseIdentical - ev.missedIdentical;
+      document.getElementById('ev-lead')!.textContent = `${ev.pairs} hand-labelled pairs, run on ${new Date(ev.ranAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}.`;
+      document.getElementById('ev-grid')!.replaceChildren(tile(ev.falseIdentical, 'False matches', 'must be zero', undefined, true), tile(ev.pairs, 'Labelled pairs'), tile(ev.exact, 'Exact answers'), tile(safe, 'Safe disagreements'));
+    }
+  }).catch(() => {});
+</script>
+<style>.tr-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}</style>

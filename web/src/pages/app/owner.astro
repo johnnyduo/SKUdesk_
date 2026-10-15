@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Owner console | SKUdesk" description="The owner's controls: the kill switch, limits and the audit log."><Shell>
+<PageHead title="Owner console" sub="The kill switch, the limits and the audit log."><span slot="badge" class="pill" id="state">…</span></PageHead>
+<Explain>
+Everything that changes the agent lives here and needs the owner key. <b>The kill switch</b> stops scans, new proposals and approvals at once. The audit log records every change and every decision.
+</Explain>
+<section class="card" aria-labelledby="ks-h"><h2 id="ks-h">Kill switch</h2>
+<p class="muted sm" id="lock-msg">Unlock owner mode (top right) with the owner key to use these controls.</p>
+<div class="actions"><button class="btn" id="pause" type="button" disabled>Pause the agent</button><a class="btn ghost" href="/app/policies/">Edit limits</a><a class="btn ghost" href="/app/create/">Manage watches</a></div>
+<p class="note" id="msg" role="status"></p></section>
+<div class="grid2 start">
+<section class="card" aria-labelledby="cur-h"><h2 id="cur-h">Current limits</h2><div id="limits"></div></section>
+<section class="card" aria-labelledby="sec-h"><h2 id="sec-h">How this is protected</h2>
+<ul class="steps-list">
+<li>The owner key is checked by the server in constant time on every owner call.</li>
+<li>Owner calls are rate limited and every change is written to the audit log.</li>
+<li>Approvals need either the requester's one-time token or the owner key.</li>
+<li>The agent holds no payment details, so there is nothing to drain.</li>
+</ul></section>
+</div>
+<section class="card" aria-labelledby="log-h"><h2 id="log-h">Audit log</h2><div id="events"></div></section>
+</Shell></Base>
+<script>
+  import { $, api, h, money, pct, postJson } from '../../lib/client.ts';
+  import { feed } from '../../lib/desk.ts';
+  let paused = false;
+  async function load() {
+    const [lim, events] = await Promise.all([api('/api/limits'), api('/api/events')]);
+    paused = lim.paused;
+    $('state').textContent = paused ? 'paused' : 'active'; $('state').className = `pill ${paused ? 'bad' : 'good'}`;
+    const owner = document.documentElement.classList.contains('is-owner');
+    const btn = $('pause') as HTMLButtonElement;
+    btn.disabled = !owner; btn.textContent = paused ? 'Resume the agent' : 'Pause the agent'; $('lock-msg').hidden = owner;
+    $('limits').replaceChildren(h('table', { class: 'kv' }, h('tbody', {}, h('tr', {}, h('td', {}, 'Per-buy limit'), h('td', {}, money(lim.maxSpendCents))), h('tr', {}, h('td', {}, 'Margin floor'), h('td', {}, pct(lim.minMarginBps))), h('tr', {}, h('td', {}, 'Last changed'), h('td', {}, lim.updatedAt ? new Date(lim.updatedAt).toLocaleString() : 'never')))));
+    $('events').replaceChildren(events.length ? feed(events) : h('p', { class: 'muted sm' }, 'No activity yet.'));
+  }
+  $('pause').addEventListener('click', async () => {
+    try { await postJson('/api/limits', { paused: !paused }, { owner: true, method: 'PUT' }); $('msg').textContent = paused ? 'Agent resumed.' : 'Agent paused.'; await load(); }
+    catch (e) { $('msg').textContent = (e as Error).message; }
+  });
+  void load().catch(() => {});
+  addEventListener('skudesk:owner', () => void load());
+  setTimeout(() => void load(), 700);
+</script>
+<style>
+.steps-list{margin:0;padding-left:20px;display:grid;gap:var(--s3);color:var(--mut)}
+</style>

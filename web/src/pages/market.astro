@@ -1,0 +1,58 @@
+---
+import Base from '../layouts/Base.astro';
+import Shell from '../components/shell/Shell.astro';
+import PageHead from '../components/shell/PageHead.astro';
+import Explain from '../components/shell/Explain.astro';
+---
+<Base title="Offer market | SKUdesk" description="Every product the agent tracks, the ladder of identical offers and the price history."><Shell>
+<PageHead title="Offer market" sub="Every tracked product, its ladder of identical offers and its price history."/>
+<Explain>
+Pick a product on the left. The <b>ladder</b> is every offer that passed the identity gate, cheapest first, with set-aside prices in amber. The <b>history</b> grows by one point per check, and the tape shows what the agent did most recently.
+</Explain>
+<div class="mk">
+<aside class="card mk-list" aria-label="Products"><h2>Products</h2><div id="list" class="stack-sm"><p class="muted sm">Loading…</p></div></aside>
+<div class="mk-main stack">
+<section class="card" id="head"><p class="muted">Select a product.</p></section>
+<section class="card" aria-labelledby="lad-h"><h2 id="lad-h">Offer ladder</h2><div id="ladder"></div></section>
+<section class="card" aria-labelledby="hist-h"><h2 id="hist-h">Price history</h2><div id="chart"></div></section>
+</div>
+<aside class="card mk-tape" aria-labelledby="tape-h"><h2 id="tape-h">Tape</h2><div id="tape"></div></aside>
+</div>
+</Shell></Base>
+<script>
+  import { api, h, lineChart, money, thumbSrc, verdictPill } from '../lib/client.ts';
+  import { priceLadder } from '../lib/analysis-view.ts';
+  import { feed } from '../lib/desk.ts';
+  const list = document.getElementById('list')!;
+  async function select(key: string, rows: any[]) {
+    list.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.key === key));
+    const { analysis: a, series } = await api(`/api/lots/${key}`);
+    const cur = a.currency;
+    document.getElementById('head')!.replaceChildren(
+      h('div', { class: 'row lg' }, h('span', { class: 'thumb lg' }, thumbSrc(a.buy?.offer.thumbnail ?? a.identical[0]?.offer.thumbnail) ? h('img', { src: thumbSrc(a.buy?.offer.thumbnail ?? a.identical[0]?.offer.thumbnail)!, alt: '' }) : null),
+        h('div', {}, h('h2', {}, a.query), h('p', { class: 'muted sm' }, a.buy ? `Cheapest identical ${money(a.buy.landedCents, cur)} at ${a.buy.offer.seller} · ${a.gate.identical} of ${a.gate.considered} listings identical` : `${a.gate.considered} listings checked, none identical`), verdictPill(rows.find((r) => r.key === key)?.verdict ?? 'none')),
+        h('a', { class: 'btn ghost', href: `/app/opportunities/view/?id=${a.id}` }, 'Full evidence')));
+    document.getElementById('ladder')!.replaceChildren(priceLadder(a) ?? h('p', { class: 'muted sm' }, 'No offer passed the identity gate.'));
+    document.getElementById('chart')!.replaceChildren(lineChart(series.map((p: any) => ({ t: p.t, y: p.buyLandedCents })), cur), h('p', { class: 'muted xs' }, 'Cheapest identical landed cost at each check.'));
+  }
+  Promise.all([api('/api/products'), api('/api/events')]).then(([rows, events]) => {
+    document.getElementById('tape')!.replaceChildren(events.length ? feed(events.slice(0, 12)) : h('p', { class: 'muted sm' }, 'No activity yet.'));
+    if (!rows.length) { list.replaceChildren(h('p', { class: 'muted sm' }, 'No products yet. Run a check on the desk.')); return; }
+    list.replaceChildren(...rows.map((r: any) => h('button', { type: 'button', class: 'mk-item', 'data-key': r.key, on: { click: () => void select(r.key, rows) } },
+      h('span', { class: 'thumb' }, thumbSrc(r.thumbnail) ? h('img', { src: thumbSrc(r.thumbnail)!, alt: '' }) : null),
+      h('span', { class: 'mk-n' }, h('b', {}, r.query), h('small', { class: 'muted' }, r.buy ? money(r.buy.landedCents, r.currency) : 'no identical offer')))));
+    const want = new URLSearchParams(location.search).get('key');
+    void select(rows.some((r: any) => r.key === want) ? want! : rows[0].key, rows);
+  }).catch(() => {});
+</script>
+<style>
+.mk{display:grid;grid-template-columns:260px minmax(0,1fr) 300px;gap:var(--gutter);align-items:start}
+.mk-item{display:flex;gap:var(--s3);align-items:center;text-align:left;width:100%;padding:var(--s2);border:1px solid transparent;border-radius:var(--r-sm);background:transparent;color:inherit;font:inherit;cursor:pointer;min-height:56px}
+.mk-item:hover,.mk-item.on{border-color:var(--line-strong);background:rgba(255,255,255,.03)}
+.mk-item.on{border-color:var(--neon)}
+.mk-item .thumb{width:44px;height:44px}
+.mk-n{display:grid;gap:2px;min-width:0}.mk-n b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thumb.lg{width:80px;height:80px}
+@media(max-width:1200px){.mk{grid-template-columns:240px minmax(0,1fr)}.mk-tape{grid-column:1/-1}}
+@media(max-width:800px){.mk{grid-template-columns:minmax(0,1fr)}}
+</style>

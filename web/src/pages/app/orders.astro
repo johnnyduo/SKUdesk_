@@ -1,0 +1,30 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Approvals | SKUdesk" description="Proposals waiting for a person to approve or reject."><Shell>
+<PageHead title="Approvals" sub="Proposals waiting for a person."/>
+<Explain>
+Every buy the agent suggests waits here. <b>Only the person who ran the check, or the owner, can decide it.</b> If the owner has set a per-buy limit, a proposal above it is blocked and cannot be approved. While the agent is paused, nothing can be approved.
+</Explain>
+<div id="paused" class="alert" hidden role="status">The agent is paused by its owner. Nothing can be approved until it is resumed.</div>
+<div id="queue" class="stack"><p class="muted">Loading…</p></div>
+</Shell></Base>
+<script>
+  import { api, h } from '../../lib/client.ts';
+  import { approvalPanel } from '../../lib/analysis-view.ts';
+  async function load() {
+    const [props, limits] = await Promise.all([api('/api/proposals'), api('/api/limits')]);
+    (document.getElementById('paused') as HTMLElement).hidden = !limits.paused;
+    const pending = props.filter((p: any) => p.status === 'pending');
+    const done = props.filter((p: any) => p.status !== 'pending').slice(0, 10);
+    const q = document.getElementById('queue')!;
+    q.replaceChildren(
+      h('section', { class: 'card' }, h('h2', {}, `Waiting for a decision (${pending.length})`), pending.length ? h('div', { class: 'stack' }, pending.map((p: any) => h('div', { class: 'panel' }, h('p', { class: 'mono xs muted' }, `${p.query} · ${new Date(p.createdAt).toLocaleString()} · ${p.origin === 'scan' ? 'scheduled scan' : 'user check'}`), approvalPanel(p.id, () => void load())))) : h('p', { class: 'muted sm' }, 'Nothing is waiting.')),
+      h('section', { class: 'card' }, h('h2', {}, 'Recently decided'), done.length ? h('div', { class: 'stack-sm' }, done.map((p: any) => h('div', { class: 'row' }, h('span', { class: `pill ${p.status === 'approved' ? 'good' : ''}` }, p.status), h('span', {}, p.title)))) : h('p', { class: 'muted sm' }, 'No decisions yet.')));
+  }
+  void load().catch(() => {});
+  addEventListener('skudesk:owner', () => void load());
+</script>

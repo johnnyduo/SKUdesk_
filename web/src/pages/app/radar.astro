@@ -1,0 +1,59 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Radar | SKUdesk" description="The daily scan of the watchlist."><Shell>
+<PageHead title="Radar" sub="The scheduled scan of the watchlist."/>
+<Explain>
+Cloud Scheduler wakes the agent once a day. It re-checks each watched product with a fresh search, files a proposal if it finds a buy, and adds a point to the price history. The owner can also run a scan by hand.
+</Explain>
+<div class="grid2 grid-7-5 start">
+<section class="card" aria-labelledby="rd-h"><h2 id="rd-h">Sweep</h2>
+<div class="radar" id="radar" role="img" aria-label="Radar with one blip per watched product"><i class="sweep" aria-hidden="true"></i></div>
+<p class="muted sm" id="radar-note"></p>
+<div class="actions"><button class="btn" id="scan" type="button" hidden>Run a scan now</button></div>
+<p class="note" id="scan-msg" role="status"></p>
+</section>
+<section class="card" aria-labelledby="sc-h"><h2 id="sc-h">Latest scans</h2><div id="scans" class="offers"><p class="muted sm">Loading…</p></div></section>
+</div>
+<section class="card" aria-labelledby="wl-h"><h2 id="wl-h">Watchlist</h2><div id="watches"></div></section>
+</Shell></Base>
+<script>
+  import { $, api, h, money, postJson, when } from '../../lib/client.ts';
+  async function load() {
+    const [scans, watches, st] = await Promise.all([api('/api/scans'), api('/api/watches'), api('/api/status')]);
+    const list = [...watches.filter((w: any) => w.active).map((w: any) => w.query), ...st.watchlist.map((w: any) => w.query)].filter((q, i, a) => a.indexOf(q) === i);
+    const radar = $('radar');
+    radar.querySelectorAll('.blip').forEach((b) => b.remove());
+    list.forEach((q: string, i: number) => {
+      const ang = (i / Math.max(list.length, 1)) * Math.PI * 2 + 0.6, r = 28 + (i % 3) * 18;
+      const b = h('i', { class: 'blip', title: q });
+      b.style.left = `${50 + r * Math.cos(ang)}%`; b.style.top = `${50 + r * Math.sin(ang)}%`;
+      radar.append(b);
+    });
+    $('radar-note').textContent = `${list.length} product${list.length === 1 ? '' : 's'} on the radar. The scan checks at most three per run to protect the monthly search budget.`;
+    $('scans').replaceChildren(...(scans.length ? scans.flatMap((s: any) => s.done.map((d: any) => h('a', { class: 'offer', href: `/app/opportunities/view/?id=${d.id}` }, h('span', { class: 'thumb' }), h('div', { class: 't' }, h('span', { class: 'title' }, d.query), h('div', { class: 's' }, `${when(s.createdAt)} · ${d.headline}`)), h('span', { class: 'p' }, d.buy ? money(d.buy.landedCents, d.currency) : '—')))) : [h('p', { class: 'muted sm' }, 'No scan has run yet.')]));
+    $('watches').replaceChildren(watches.length ? h('div', { class: 'stack-sm' }, watches.map((w: any) => h('div', { class: 'row' }, h('span', { class: `pill ${w.active ? 'good' : ''}` }, w.active ? 'active' : 'paused'), h('span', {}, `${w.query} (${w.market.toUpperCase()})`), h('span', { class: 'muted xs mono' }, w.lastRunAt ? `last scan ${when(w.lastRunAt)}` : 'not scanned yet')))) : h('p', { class: 'muted sm' }, 'No watches added. The default watchlist is scanned. Add watches on the Deploy agent page.'));
+  }
+  const btn = $('scan') as HTMLButtonElement;
+  const owner = () => { btn.hidden = !document.documentElement.classList.contains('is-owner'); };
+  btn.addEventListener('click', async () => {
+    btn.disabled = true; $('scan-msg').textContent = 'Scanning… this takes about half a minute.';
+    try { const r = await postJson('/api/jobs/scan', {}, { owner: true }); $('scan-msg').textContent = `Scan finished: ${r.done.length} checked${r.failed.length ? `, ${r.failed.length} failed` : ''}.`; await load(); }
+    catch (e) { $('scan-msg').textContent = (e as Error).message; } finally { btn.disabled = false; }
+  });
+  void load().catch(() => {});
+  addEventListener('skudesk:owner', owner);
+  setTimeout(owner, 600);
+</script>
+<style>
+.radar{position:relative;aspect-ratio:1;max-width:340px;margin:0 auto;border-radius:50%;border:1px solid var(--line);background:radial-gradient(circle,rgba(204,255,0,.06),transparent 70%);overflow:hidden}
+.radar::before,.radar::after{content:"";position:absolute;inset:16%;border-radius:50%;border:1px dashed var(--line-soft)}
+.radar::after{inset:34%}
+.sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(204,255,0,.35),transparent 28%);animation:sweep 5s linear infinite}
+.blip{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--neon);box-shadow:0 0 12px var(--neon)}
+@keyframes sweep{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.sweep{animation:none;opacity:.4}}
+</style>

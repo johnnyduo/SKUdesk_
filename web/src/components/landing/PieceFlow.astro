@@ -1,14 +1,38 @@
-/* ported from TrackRecord.astro */
-.tr-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s4)}
-.tr-tile{display:grid;gap:var(--s2);align-content:start;padding:var(--s5);border:1px solid var(--line);border-radius:var(--s4);background:linear-gradient(180deg,rgba(20,22,20,.9),rgba(12,14,13,.9))}
-.tr-v{font-family:var(--serif);font-weight:400;font-size:clamp(34px,3.6vw,52px);line-height:1;letter-spacing:-.02em;color:var(--neon);font-variant-numeric:tabular-nums}
-.tr-k{font-family:var(--mono);font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
-.tr-sub{color:var(--dim);font-size:var(--fs-sm);line-height:1.4}
-.tr-foot{margin:var(--s6) 0 0;color:var(--dim);font-size:var(--fs-sm)}
-@media(max-width:1100px){.tr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:700px){.tr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+---
+// "Limits it can't break": one looping pass through a check, lit stage by stage. Pure CSS, no script.
+const I: Record<string, string> = {
+  limits: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  agent: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  gates: '<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  check: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/>',
+  refuse: '<circle cx="12" cy="12" r="8"/><path d="M9 9l6 6M15 9l-6 6"/>',
+  person: '<circle cx="12" cy="8" r="4"/><path d="M5 21c1-4 4-6 7-6s6 2 7 6"/>',
+};
+const nodes: { zone: 'on' | 'off'; icon: string; title: string; text: string }[] = [
+  { zone: 'on', icon: 'limits', title: 'Owner sets limits', text: 'A per-buy cap, a margin floor and a kill switch.' },
+  { zone: 'off', icon: 'agent', title: 'Gemini proposes', text: 'Reads each listing and quotes what it relied on.' },
+  { zone: 'on', icon: 'gates', title: 'Evidence check', text: 'Code confirms the quotes are in the listing.' },
+  { zone: 'on', icon: 'check', title: 'Economics', text: 'Re-derives landed cost, fees and the margin.' },
+  { zone: 'on', icon: 'refuse', title: 'Bad data refused', text: 'Unbelievable prices are set aside, not traded on.' },
+  { zone: 'on', icon: 'person', title: 'A person decides', text: 'The agent files a proposal. It never spends.' },
+];
+---
+<section id="how" class="ls-sec pf" aria-labelledby="pf-h"><div class="lp-wrap">
+<h2 class="ls-h" id="pf-h">Limits it can’t break.</h2>
+<p class="pf-lead">The owner sets the caps. The server enforces them on every check, and one switch pauses the agent.</p>
+<ol class="pf-flow">
+{nodes.map((n, i) => (
+<li class="pf-node" data-zone={n.zone} style={`--i:${i}`}>
+<span class="pf-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I[n.icon]}></svg></span>
+<div class="pf-tx"><b>{n.title}</b><p>{n.text}</p></div>
+{i < nodes.length - 1 && <i class="pf-dot" aria-hidden="true"></i>}
+</li>
+))}
+</ol>
+<p class="pf-key"><span class="pf-k off">Model: reads and proposes</span><span class="pf-k on">Code: verifies and decides</span></p>
+</div></section>
 
-/* ported from PieceFlow.astro */
+<style>
 .pf{--t:12.6s;--lit:#CCFF00;--off:#46D9FF}
 .pf-lead{max-width:62ch;margin:calc(var(--s5) * -1) 0 var(--s8);color:var(--mut);font-size:var(--fs-lg);line-height:1.5}
 .pf-flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:30px}
@@ -38,19 +62,4 @@
   @keyframes pf-go-v{0%,6%{margin-top:-4px;opacity:0}7%{opacity:1}13%{margin-top:20px;opacity:1}14.3%,100%{margin-top:20px;opacity:0}}
 }
 @media(prefers-reduced-motion:reduce){.pf-node,.pf-node::before,.pf-dot{animation:none}.pf-dot{display:none}}
-
-/* ported from SiteFooter.astro */
-.sf{border-top:1px solid var(--line-soft);padding:var(--s12) 0 var(--s8);color:var(--mut);background:linear-gradient(180deg,rgba(14,16,15,0),rgba(14,16,15,.7))}
-.sf-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:var(--s10)}
-.sf-brand p{margin:var(--s4) 0 0;max-width:30ch;color:var(--mut);font-size:var(--fs-md);line-height:1.5}
-.sf h3{margin:0 0 var(--s3);font-family:var(--mono);font-size:var(--fs-xs);font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.sf-col{display:grid;gap:var(--s1);align-content:start;justify-items:start}
-.sf-col a{display:inline-flex;align-items:center;min-height:32px;color:var(--mut);text-decoration:none;font-size:var(--fs-md)}
-.sf-col a:hover{color:var(--txt)}
-.sf-add{min-height:44px;font-size:var(--fs-sm)}
-.sf-id{margin-top:var(--s2);color:var(--dim);font-family:var(--mono);font-size:var(--fs-xs)}
-.sf-note{min-height:18px;margin-top:var(--s1);color:var(--neon);font-size:var(--fs-sm)}
-.sf-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3) var(--s6);margin-top:var(--s10);padding-top:var(--s6);border-top:1px solid var(--line-soft);color:var(--dim);font-size:var(--fs-xs)}
-.sf-bar a{display:inline-flex;align-items:center;min-height:var(--tap);color:var(--mut)}
-@media(max-width:900px){.sf-grid{grid-template-columns:1fr 1fr;gap:var(--s8)}.sf-brand{grid-column:1/-1}}
-@media(max-width:520px){.sf-grid{grid-template-columns:1fr}}
+</style>

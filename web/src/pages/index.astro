@@ -1,0 +1,40 @@
+---
+import Base from '../layouts/Base.astro';
+import '../styles/landing.css';
+import ShowcaseStage from '../components/hero/ShowcaseStage.astro';
+import PieceFlow from '../components/landing/PieceFlow.astro';
+import RoundFlow from '../components/landing/RoundFlow.astro';
+import SiteFooter from '../components/landing/SiteFooter.astro';
+import TrackRecord from '../components/landing/TrackRecord.astro';
+import Evidence from '../components/landing/Evidence.astro';
+---
+<Base title="SKUdesk — One price you can trust, only for the same item.">
+
+<header class="lp-nav"><div class="lp-wrap">
+<a class="lp-logo" href="/" aria-label="SKUdesk — home"><span class="logo-mark"><svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M8 22 16 8l8 14" stroke="#CCFF00" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>SKUdesk</a>
+<nav class="lp-links" aria-label="Sections"><a href="#round">How it works</a><a href="#how">Limits</a><a href="#evidence">Evidence</a></nav>
+<span class="spacer"></span>
+<a class="btn" href="/app/">Launch desk</a>
+</div></header>
+
+<main id="main" class="lp">
+
+<ShowcaseStage />
+
+<section class="ls-src" aria-label="Sources"><div class="lp-wrap">
+<p class="ls-src-h">Sources · Google Shopping live · eBay Browse API ready</p>
+<ul class="ls-src-list">
+<li><img src="/img/sources/google-shopping.png" alt="Google Shopping" width="677" height="112" decoding="async"/></li>
+<li><img src="/img/sources/ebay.png" alt="eBay" width="279" height="112" decoding="async"/></li>
+</ul>
+</div></section>
+
+<TrackRecord />
+<RoundFlow />
+<PieceFlow />
+<Evidence />
+
+</main>
+
+<SiteFooter />
+</Base>

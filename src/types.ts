@@ -103,12 +103,18 @@ export interface Analysis {
   notes: string[];
   proposalId: string | null;
   fromCache: boolean;
+  // Shown only to the requester of the check, never stored with the analysis.
+  decisionToken?: string;
 }
 
 export type ProposalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface Proposal {
   id: string;
+  // Hash of the secret handed only to whoever ran the check; absent for scheduled scans, which the owner decides.
+  tokenHash?: string;
+  origin?: 'user' | 'scan';
+  blockedReason?: string;
   analysisId: string;
   query: string;
   createdAt: string;

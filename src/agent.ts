@@ -4,6 +4,8 @@ import { MARKETS } from './serpapi.ts';
 import { hashKey, type Store } from './store.ts';
 import type { Analysis, AnalyzeEvent, ArbitrageView, Assumptions, Flagged, Gated, Offer, Priced, Proposal, SellView } from './types.ts';
 import { briefingFor, type BriefingFacts } from './briefing.ts';
+import { randomBytes } from 'node:crypto';
+import { DEFAULT_LIMITS, logEvent, recordHistory, type Limits } from './domain.ts';
 
 export const DEFAULT_ASSUMPTIONS: Assumptions = {
   unknownShippingCents: 1000,
@@ -28,6 +30,8 @@ export interface AgentDeps {
   retail?: (query: string, currency: string) => Promise<number | null>;
   // Plain-language note from the model, grounded in the computed numbers. Optional.
   briefing?: (facts: BriefingFacts) => Promise<string | null>;
+  // Owner-set limits and kill switch. Defaults apply when absent.
+  limits?: () => Promise<Limits>;
   store: Store;
   model: string;
   now?: () => Date;
@@ -39,6 +43,8 @@ export interface AnalyzeRequest {
   market: string;
   assumptions?: Partial<Assumptions>;
   fresh?: boolean;
+  // A scheduled scan: no human is waiting, so no decision token is issued.
+  system?: boolean;
 }
 
 const isEngineError = (r: IdentityResult): boolean => r.mismatches.some((m) => m.startsWith('engine error'));
@@ -112,7 +118,8 @@ const money = (cents: number, currency: string): string =>
 export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: AnalyzeEvent) => void = () => {}): Promise<Analysis> {
   const market = MARKETS[req.market];
   if (!market) throw new Error(`unknown market ${req.market}`);
-  const assumptions: Assumptions = { ...DEFAULT_ASSUMPTIONS, ...req.assumptions };
+  const limits = await (deps.limits?.() ?? Promise.resolve(DEFAULT_LIMITS)).catch(() => DEFAULT_LIMITS);
+  const assumptions: Assumptions = { ...DEFAULT_ASSUMPTIONS, minMarginBps: limits.minMarginBps, ...req.assumptions };
   const now = (deps.now ?? (() => new Date()))();
   const query = req.query.trim();
 
@@ -206,7 +213,7 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
     market: market.code,
     currency: cur,
     createdAt: now.toISOString(),
-    model: deps.model,
+    model: 'Gemini',
     searched: raw.length,
     gate: counts,
     identical: identical.slice(0, 10),
@@ -233,10 +240,15 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
     }).catch(() => null);
   }
 
-  // Every spend needs a human. The agent only ever files a pending proposal.
-  if (buy) {
+  // Every spend needs a human. The agent only ever files a pending proposal, and not at all while the owner has paused it.
+  let token: string | undefined;
+  if (buy && limits.paused) {
+    analysis.notes.push('The agent is paused by its owner, so no proposal was filed.');
+  } else if (buy) {
+    token = req.system ? undefined : randomBytes(24).toString('hex');
+    const overLimit = buy.landedCents > limits.maxSpendCents;
     const proposal: Proposal = {
-      id: hashKey(`${query}|${market.code}|${buy.offer.seller}|${buy.offer.priceCents}`).slice(0, 16),
+      id: hashKey(`proposal|${analysis.id}`).slice(0, 16),
       analysisId: analysis.id,
       query,
       createdAt: analysis.createdAt,
@@ -247,12 +259,22 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
       landedCents: buy.landedCents,
       currency: cur,
       status: 'pending',
+      origin: req.system ? 'scan' : 'user',
+      ...(token ? { tokenHash: hashKey(`token|${token}`) } : {}),
+      ...(overLimit ? { blockedReason: `Landed cost ${money(buy.landedCents, cur)} is above the owner's per-buy limit of ${money(limits.maxSpendCents, cur)}.` } : {}),
     };
-    const existing = await deps.store.get<Proposal>('proposals', proposal.id);
-    if (!existing) await deps.store.set('proposals', proposal.id, proposal);
+    await deps.store.set('proposals', proposal.id, proposal);
     analysis.proposalId = proposal.id;
+    if (overLimit) analysis.notes.push(proposal.blockedReason!);
   }
   await deps.store.set('analyses', analysis.id, analysis);
-  emit({ type: 'done', analysis });
-  return analysis;
+  // The activity log and price history are best effort: a failure there must never break an analysis.
+  await Promise.all([
+    logEvent(deps.store, 'analysis', `Checked ${query}`, analysis.headline).catch(() => {}),
+    analysis.proposalId ? logEvent(deps.store, 'proposal', `Proposal filed for ${query}`, `${buy!.offer.seller} at ${money(buy!.landedCents, cur)} landed, awaiting a decision`).catch(() => {}) : Promise.resolve(),
+    recordHistory(deps.store, analysis).catch(() => {}),
+  ]);
+  const out = token ? { ...analysis, decisionToken: token } : analysis;
+  emit({ type: 'done', analysis: out });
+  return out;
 }

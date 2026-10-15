@@ -5,6 +5,7 @@ import { MARKETS, searchShopping } from './serpapi.ts';
 import { searchEbay } from './ebay.ts';
 import { estimateRetail } from './retail.ts';
 import { briefingFor } from './briefing.ts';
+import { getLimits } from './domain.ts';
 import { readFileSync } from 'node:fs';
 import { FileStore, firestoreStore, Quota, type Store } from './store.ts';
 import type { Offer } from './types.ts';
@@ -46,11 +47,15 @@ const app = createApp({
   store, quota, watchlist,
   storeKind: useFirestore ? `firestore:${database}` : 'local file',
   scanSecret: env('SCAN_SECRET') ?? '',
+  ownerKey: env('OWNER_KEY') ?? '',
+  edgeSecret: env('EDGE_SECRET') ?? '',
+  scanMax: Number(env('SCAN_MAX') ?? 3),
   sources: { serpapi: true, ebay: Boolean(ebay) },
   agent: {
     engine, store, model,
     retail: async (query, currency) => (await estimateRetail(generate, store, query, currency)).cents,
     briefing: (facts) => briefingFor(generate, facts),
+    limits: () => getLimits(store),
     search: async (query, marketCode, opts) => {
       const market = MARKETS[marketCode];
       const serp = await searchShopping(query, market, { apiKey: serpKey, store, quota }, opts);

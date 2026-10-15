@@ -1,0 +1,14 @@
+{
+  "name": "skudesk-web",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --port 4321",
+    "build": "astro build"
+  },
+  "dependencies": {
+    "astro": "^4.16.0",
+    "three": "0.186.1"
+  }
+}

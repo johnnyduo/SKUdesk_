@@ -1,0 +1,47 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Deploy agent | SKUdesk" description="Put a product on the watchlist so the agent checks it every day."><Shell>
+<PageHead title="Deploy agent" sub="Put a product on the watchlist."/>
+<Explain>
+A deployed agent is a <b>watch</b>: a product the scheduler re-checks every day with a fresh search. It files a proposal when it finds a buy and adds a point to the price history. Adding or removing watches is an <b>owner action</b>, because every scan spends part of the monthly search budget.
+</Explain>
+<section class="card" aria-labelledby="new-h"><h2 id="new-h">New watch</h2>
+<p class="muted sm" id="lock-msg">Unlock owner mode (top right) to add or remove watches.</p>
+<form id="form" class="formrow" autocomplete="off">
+<div class="field grow"><label class="label" for="q">Product, with its set or model number</label><input id="q" required minlength="3" maxlength="80" placeholder="LEGO 21330 Home Alone" spellcheck="false"></div>
+<div class="field"><label class="label" for="m">Market</label><select id="m"></select></div>
+<button class="btn lg" id="add" type="submit" disabled>Add watch</button>
+</form>
+<p class="note" id="msg" role="status"></p>
+</section>
+<section class="card" aria-labelledby="w-h"><h2 id="w-h">Watches <span class="pill" id="count"></span></h2><div id="watches"></div></section>
+</Shell></Base>
+<script>
+  import { $, api, h, postJson, when } from '../../lib/client.ts';
+  async function load() {
+    const [w, st] = await Promise.all([api('/api/watches'), api('/api/status')]);
+    const sel = $('m') as HTMLSelectElement;
+    if (!sel.options.length) sel.replaceChildren(...st.markets.map((m: any) => h('option', { value: m.code }, `${m.label} (${m.currency})`)));
+    $('count').textContent = `${w.length} of 8`;
+    const owner = document.documentElement.classList.contains('is-owner');
+    ($('add') as HTMLButtonElement).disabled = !owner;
+    $('lock-msg').hidden = owner;
+    $('watches').replaceChildren(w.length ? h('div', { class: 'stack-sm' }, w.map((x: any) => h('div', { class: 'row' },
+      h('span', { class: `pill ${x.active ? 'good' : ''}` }, x.active ? 'active' : 'paused'), h('span', {}, `${x.query} (${x.market.toUpperCase()})`),
+      h('span', { class: 'muted xs mono' }, x.lastRunAt ? `last scan ${when(x.lastRunAt)}` : 'not scanned yet'),
+      owner ? h('button', { class: 'btn ghost', type: 'button', on: { click: async () => { await postJson(`/api/watches/${x.id}`, { active: !x.active }, { owner: true, method: 'PATCH' }); await load(); } } }, x.active ? 'Pause' : 'Resume') : null,
+      owner ? h('button', { class: 'btn ghost', type: 'button', on: { click: async () => { await api(`/api/watches/${x.id}`, { method: 'DELETE', owner: true }); await load(); } } }, 'Remove') : null))) : h('p', { class: 'muted sm' }, 'No watches yet. The default watchlist is scanned until you add one.'));
+  }
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await postJson('/api/watches', { query: ($('q') as HTMLInputElement).value.trim(), market: ($('m') as HTMLSelectElement).value }, { owner: true }); $('msg').textContent = 'Added. The next scan will include it.'; ($('q') as HTMLInputElement).value = ''; await load(); }
+    catch (err) { $('msg').textContent = (err as Error).message; }
+  });
+  void load().catch(() => {});
+  addEventListener('skudesk:owner', () => void load());
+  setTimeout(() => void load(), 700);
+</script>

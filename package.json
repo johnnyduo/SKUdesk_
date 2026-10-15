@@ -10,7 +10,9 @@
     "test": "node --test test/",
     "start": "node src/server.ts",
     "eval": "node --env-file=.env eval/run.ts",
-    "smoke": "node test/smoke.ts"
+    "smoke": "node test/smoke.ts",
+    "web:build": "npm --prefix web install && npm --prefix web run build",
+    "gcp-build": "npm --prefix web ci && npm --prefix web run build && rm -rf web/node_modules"
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.3.1",

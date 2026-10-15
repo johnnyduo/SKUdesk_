@@ -1,0 +1,62 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+import { JOURNEY } from '../../lib/journey';
+---
+<Base title="Desk | SKUdesk" description="Run a check on any product: the agent searches, Gemini judges every listing, and you see the honest answer."><Shell>
+<PageHead title="Overview" sub="Ask the agent about one product. It answers buy, sell and arbitrage, only for the identical item."/>
+
+<Explain>
+Type a product with its set or model number. The agent searches Google Shopping, <b>Gemini judges every listing against your product</b>, code checks the quotes it relied on, and only then are costs worked out. If nothing is provably the same, or no gap survives the costs, the answer is no. <b>Nothing is bought without your approval.</b>
+</Explain>
+
+<section class="card" aria-labelledby="ask-h"><h2 id="ask-h">Run a check</h2><div id="desk"></div></section>
+
+<div class="metricbar" id="metrics" aria-label="Totals"></div>
+
+<div class="grid2 grid-7-5 start">
+<section class="card" aria-labelledby="act-h">
+<h2 id="act-h">Recent activity <span class="pill">live</span></h2>
+<div id="activity"><p class="muted sm">Loading…</p></div>
+</section>
+<section class="card" aria-labelledby="go-h">
+<h2 id="go-h">Dig into the desk</h2>
+<ul class="ov-links">
+<li><a href="/app/opportunities/"><b>Opportunities</b><span>Every check ranked by what it found.</span></a></li>
+<li><a href="/app/orders/"><b>Approvals</b><span>Proposals waiting for a person to decide.</span></a></li>
+<li><a href="/app/radar/"><b>Radar</b><span>The daily scan of the watchlist.</span></a></li>
+</ul>
+</section>
+</div>
+
+<section class="card hub" aria-labelledby="hub-h" data-testid="start-here">
+<h2 id="hub-h">The story in six steps</h2>
+<ol class="hub-steps">
+{JOURNEY.map((j) => (
+<li class:list={[{ here: j.n === 1 }, { first: j.n === 1 }]}>
+<a href={j.href} aria-current={j.n === 1 ? 'step' : undefined}><span class="hub-n" aria-hidden="true">{j.n}</span><b>{j.label}</b><span class="hub-b">{j.blurb}</span>{j.n === 1 && <em class="hub-here">You are here</em>}</a>
+</li>
+))}
+</ol>
+<a class="btn lg" href="/show/" data-testid="hub-start">Next: Agent decision <span aria-hidden="true">→</span></a>
+</section>
+</Shell></Base>
+
+<script>
+  import { api, h, int, money0 } from '../../lib/client.ts';
+  import { feed, mountDesk } from '../../lib/desk.ts';
+
+  const metric = (k: string, v: string) => h('div', {}, h('small', {}, k), h('b', { class: 'mono' }, v));
+  async function refresh() {
+    const [impact, st, props, events] = await Promise.all([api('/api/impact'), api('/api/status'), api('/api/proposals'), api('/api/events')]);
+    document.getElementById('metrics')!.replaceChildren(
+      metric('Products checked', int(impact.products)), metric('Listings screened', int(impact.listings)), metric('Rejected by the gate', int(impact.rejected)),
+      metric('Bad prices set aside', int(impact.flagged)), metric('Awaiting approval', int(props.filter((p: any) => p.status === 'pending').length)), metric('Searches this month', `${int(st.quota.used)} / ${int(st.quota.limit)}`));
+    document.getElementById('activity')!.replaceChildren(events.length ? feed(events.slice(0, 8)) : h('p', { class: 'muted sm' }, 'No activity yet. Run a check above.'));
+  }
+  mountDesk(document.getElementById('desk')!, { onDone: () => void refresh() });
+  void refresh().catch(() => {});
+  void money0;
+</script>
