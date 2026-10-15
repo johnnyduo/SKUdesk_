@@ -4,38 +4,41 @@
 <meta charset="utf-8">
 <title>SKUdesk deck</title>
 <style>
+  @font-face{font-family:"Inter";font-weight:400 700;src:url(../src/ui/fonts/inter.woff2) format("woff2")}
+  @font-face{font-family:"Instrument Serif";font-weight:400;src:url(../src/ui/fonts/instrument-serif.woff2) format("woff2")}
+  @font-face{font-family:"JetBrains Mono";font-weight:400 700;src:url(../src/ui/fonts/jetbrains-mono.woff2) format("woff2")}
   @page { size: 1280px 720px; margin: 0; }
-  :root { --ink: #11161d; --muted: #566170; --line: #dfe4ea; --bg: #ffffff; --soft: #f4f6f9; --blue: #1a56db; --green: #0f7a43; --red: #b42318; --amber: #8a5a00; }
+  :root { --ink: #f5f6f2; --muted: #a6aba3; --line: rgba(255,255,255,.12); --bg: #080908; --soft: #141614; --neon: #ccff00; --blue: #ccff00; --green: #3ed598; --red: #ff7a7a; --amber: #ffb224; --teal: #10e1ff; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: #cfd5dd; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
-  .slide { width: 1280px; height: 720px; margin: 24px auto; background: var(--bg); padding: 64px 80px; position: relative; overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column; }
+  html, body { margin: 0; background: #1b1d1b; font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slide { width: 1280px; height: 720px; margin: 24px auto; background: radial-gradient(900px 500px at 85% -10%, rgba(1,107,229,.28), transparent 60%), radial-gradient(700px 400px at 0% 110%, rgba(204,255,0,.10), transparent 60%), var(--bg); padding: 64px 80px; position: relative; overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column; }
   @media print { html, body { background: none; } .slide { margin: 0; } }
-  .kicker { font-size: 18px; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); font-weight: 700; margin-bottom: 14px; }
-  h1 { font-size: 64px; line-height: 1.05; margin: 0 0 20px; letter-spacing: -.02em; }
-  h2 { font-size: 44px; line-height: 1.12; margin: 0 0 24px; letter-spacing: -.015em; max-width: 1000px; }
+  .kicker { font: 500 16px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--neon); margin-bottom: 16px; }
+  h1 { font: 400 112px/0.98 "Instrument Serif", Georgia, serif; margin: 0 0 20px; letter-spacing: -.02em; }
+  h2 { font: 400 54px/1.06 "Instrument Serif", Georgia, serif; margin: 0 0 26px; letter-spacing: -.015em; max-width: 1040px; }
   p, li { font-size: 24px; line-height: 1.45; color: var(--muted); margin: 0 0 12px; }
   ul { padding-left: 26px; margin: 0; }
   strong { color: var(--ink); }
-  .foot { position: absolute; left: 80px; right: 80px; bottom: 28px; display: flex; justify-content: space-between; font-size: 15px; color: #8a94a3; }
+  .foot { position: absolute; left: 80px; right: 80px; bottom: 28px; display: flex; justify-content: space-between; font: 400 14px "JetBrains Mono", monospace; color: #7d837b; }
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; flex: 1; min-height: 0; }
   .card { background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 22px 26px; }
   .card h3 { margin: 0 0 8px; font-size: 22px; }
   .card p, .card li { font-size: 20px; }
-  .big { font-size: 96px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .big { font: 400 150px/1 "Instrument Serif", Georgia, serif; letter-spacing: -.03em; }
   .good { color: var(--green); } .bad { color: var(--red); } .warn { color: var(--amber); }
   img.shot { width: 100%; border: 1px solid var(--line); border-radius: 12px; display: block; }
   .shotbox { overflow: hidden; border-radius: 12px; border: 1px solid var(--line); max-height: 440px; }
   .shotbox img { width: 100%; display: block; }
   .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 12px; }
   .step { background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-height: 210px; }
-  .step b { display: block; font-size: 15px; color: var(--blue); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+  .step b { display: block; font: 500 14px "JetBrains Mono", monospace; color: var(--neon); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
   .step span { display: block; font-size: 19px; line-height: 1.4; color: var(--muted); }
-  .step.gate { border-color: var(--blue); background: #eef3fe; }
+  .step.gate { border-color: var(--neon); background: rgba(204,255,0,.06); }
   table { border-collapse: collapse; width: 100%; font-size: 21px; }
   td, th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--muted); }
-  th { color: var(--ink); font-size: 16px; text-transform: uppercase; letter-spacing: .05em; }
+  th { color: var(--ink); font: 500 14px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
   td:first-child { color: var(--ink); font-weight: 600; }
-  .note { font-size: 17px; color: #7a8493; }
+  .note { font-size: 17px; color: #8a9088; }
 </style>
 </head>
 <body>
@@ -43,9 +46,9 @@
 <section class="slide" style="justify-content:center">
   <div class="kicker">Google Cloud AI Builder Cup 2026 · Retail &amp; Commerce</div>
   <h1>SKUdesk</h1>
-  <h2 style="font-weight:500; color:var(--muted)">One agent that buys cheapest, helps you sell, and finds arbitrage. Only for the identical product.</h2>
+  <h2 style="color:var(--muted)">One agent that buys cheapest, helps you sell, and finds arbitrage. Only for the identical product.</h2>
   <p>If nothing is provably the same item, or no gap survives the costs, it says no. A person approves every spend.</p>
-  <div class="foot"><span>Live: skudesk-ij5vrivnta-as.a.run.app</span><span>github.com/johnnyduo/SKUdesk_</span></div>
+  <div class="foot"><span>Live: skudesk.lol</span><span>github.com/johnnyduo/SKUdesk_</span></div>
 </section>
 
 <section class="slide">
@@ -180,7 +183,7 @@
     <li><strong>Next:</strong> GTIN and image evidence, eBay sold-price data, more categories where identity is checkable</li>
     <li><strong>Principle:</strong> the agent's value is knowing when to say no, and showing its evidence when it says yes</li>
   </ul>
-  <p style="margin-top:28px"><strong>Try it:</strong> skudesk-ij5vrivnta-as.a.run.app &nbsp;·&nbsp; <strong>Code:</strong> github.com/johnnyduo/SKUdesk_</p>
+  <p style="margin-top:28px"><strong>Try it:</strong> skudesk.lol &nbsp;·&nbsp; <strong>Code:</strong> github.com/johnnyduo/SKUdesk_</p>
   <p class="note">The concept and visual design build on the team's earlier work; the application code, data layer and evaluation were written for this competition.</p>
 </section>
 

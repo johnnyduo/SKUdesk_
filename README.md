@@ -24,6 +24,10 @@ Built for the Google Cloud AI Builder Cup 2026, Retail & Commerce. The concept a
 
 An honest "no" is the expected common answer; the unit tests cover the profitable path.
 
+## Also in the page
+
+Live progress while a check runs (each listing lights up green, red or amber as Gemini judges it), a price ladder against the recalled retail price, the quoted evidence shown on every identical offer, a short Gemini note whose every number is verified against the computed facts, running totals of what the gate has caught, and a downloadable evidence file per check.
+
 ## Identity eval
 
 `npm run eval` sends 43 hand-labelled pairs to the real Gemini API (`gemini-3.5-flash-lite`) and reports the number that must be zero: a pair that should not match but passed the gate. Current result: **0 false-identical**, 41 exact, 2 safe disagreements (labelled different, answered uncertain).
