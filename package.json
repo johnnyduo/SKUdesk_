@@ -9,7 +9,8 @@
   "scripts": {
     "test": "node --test test/",
     "start": "node src/server.ts",
-    "eval": "node --env-file=.env eval/run.ts"
+    "eval": "node --env-file=.env eval/run.ts",
+    "smoke": "node test/smoke.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.3.1",

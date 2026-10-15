@@ -88,7 +88,7 @@ export function createApp(deps: AppDeps): Server {
         res.writeHead(200, { 'content-type': f.type, 'cache-control': 'no-cache', ...HEADERS });
         return void res.end(f.body);
       }
-      if (req.method === 'GET' && path === '/healthz') return send(res, 200, { ok: true });
+      if (req.method === 'GET' && path === '/health') return send(res, 200, { ok: true });
 
       if (req.method === 'GET' && path === '/api/status') {
         return send(res, 200, {
