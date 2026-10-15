@@ -4,7 +4,7 @@ One agent for retail buyers and sellers. Given a product, it finds the cheapest 
 
 Built for the Google Cloud AI Builder Cup 2026, Retail & Commerce. The concept builds on the team's earlier work; all code and assets in this repository were written new for this competition.
 
-**Live:** https://skudesk-ij5vrivnta-as.a.run.app · **Deck:** [deck/SKUdesk-deck.pdf](deck/SKUdesk-deck.pdf) · **Video script:** [video/script.md](video/script.md)
+**Live:** https://skudesk.lol (Cloud Run service, direct URL https://skudesk-ij5vrivnta-as.a.run.app) · **Deck:** [deck/SKUdesk-deck.pdf](deck/SKUdesk-deck.pdf) · **Video script:** [video/script.md](video/script.md)
 
 ## What it does
 
@@ -32,7 +32,7 @@ The set includes real marketplace titles captured the day the gate wrongly passe
 
 ## Architecture
 
-Cloud Run (Node 22.18+ running TypeScript directly, no framework, no build step, deployed from source) · Firestore (database `skudesk`: cache, analyses, proposals, scans) · Cloud Scheduler (daily watchlist scan) · Secret Manager · Gemini API · SerpApi. One service account with Firestore access limited to the `skudesk` database.
+Cloud Run behind a small Cloudflare Worker front door for skudesk.lol ([edge/](edge/), forwards requests only) · Cloud Run (Node 22.18+ running TypeScript directly, no framework, no build step, deployed from source) · Firestore (database `skudesk`: cache, analyses, proposals, scans) · Cloud Scheduler (daily watchlist scan) · Secret Manager · Gemini API · SerpApi. One service account with Firestore access limited to the `skudesk` database.
 
 ## Status
 
