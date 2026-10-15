@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPrompt, parseResult, passesGate, createIdentityEngine, type Listing } from '../src/identity.ts';
+import { buildPrompt, parseResult, passesGate, createIdentityEngine, verifyEvidence, type IdentityResult, type Listing } from '../src/identity.ts';
 
 const a: Listing = { id: 'a', title: 'LEGO 75192 Millennium Falcon UCS', condition: 'new_sealed' };
 const b: Listing = { id: 'b', title: 'LEGO Star Wars Ultimate Collector Series Millennium Falcon 75192', condition: 'new_sealed' };
+const evidenceOk = { brand: 'LEGO', brandQuoteA: 'LEGO', brandQuoteB: 'LEGO', idA: '75192', idB: '75192' };
 
 test('parseResult accepts a well-formed verdict', () => {
   const r = parseResult(JSON.stringify({ verdict: 'identical', confidence: 0.97, reasons: ['same set number 75192'], mismatches: [] }));
@@ -40,8 +41,7 @@ test('prompt carries both listings and the condition rule', () => {
 });
 
 test('engine returns the parsed model verdict', async () => {
-  const engine = createIdentityEngine(async () =>
-    JSON.stringify({ verdict: 'identical', confidence: 0.96, reasons: ['same set number'], mismatches: [] }));
+  const engine = createIdentityEngine(async () => JSON.stringify({ ...evidenceOk, verdict: 'identical', confidence: 0.96, reasons: ['same set number'], mismatches: [] }));
   assert.equal((await engine.compare(a, b)).verdict, 'identical');
 });
 
@@ -56,4 +56,42 @@ test('engine fails closed when the model call throws', async () => {
   const engine = createIdentityEngine(async () => { throw new Error('503'); });
   const r = await engine.compare(a, b);
   assert.equal(r.verdict, 'uncertain');
+});
+
+test('prompt tells the model that listing text is untrusted', () => {
+  assert.match(buildPrompt(a, b), /untrusted data/);
+});
+
+const claim = (over: Record<string, unknown> = {}): IdentityResult =>
+  parseResult(JSON.stringify({ ...evidenceOk, verdict: 'identical', confidence: 0.99, reasons: ['r'], mismatches: [], ...over }));
+const bare: Listing = { id: 'c', title: 'Millennium Falcon Building Blocks 75192 Bricks', condition: 'new_sealed' };
+
+test('evidence check keeps an identical verdict whose quotes are really in both listings', () => {
+  assert.equal(verifyEvidence(a, b, claim()).verdict, 'identical');
+});
+
+test('evidence check downgrades a brand the listing never wrote (the model credited it from memory)', () => {
+  const r = verifyEvidence(a, bare, claim({ brandQuoteB: 'LEGO' }));
+  assert.equal(r.verdict, 'uncertain');
+  assert.match(r.mismatches.join(' '), /brand not found in listing B/);
+  assert.equal(passesGate(r), false);
+});
+
+test('evidence check downgrades when the model names no brand at all', () => {
+  assert.equal(verifyEvidence(a, bare, claim({ brand: 'none', brandQuoteB: 'none' })).verdict, 'uncertain');
+});
+
+test('evidence check downgrades identifiers that do not match or are not in the text', () => {
+  assert.equal(verifyEvidence(a, b, claim({ idB: '75257' })).verdict, 'uncertain');
+  assert.equal(verifyEvidence(a, b, claim({ idA: '99999', idB: '99999' })).verdict, 'uncertain');
+});
+
+test('evidence check accepts a brand written in another script when quotes are verbatim', () => {
+  const thai: Listing = { id: 't', title: 'เลโก้ 10302 ออพติมัส ไพรม์ ของใหม่', condition: 'new_sealed' };
+  const en: Listing = { id: 'e', title: 'LEGO Icons Optimus Prime 10302', condition: 'new_sealed' };
+  assert.equal(verifyEvidence(thai, en, claim({ brand: 'LEGO', brandQuoteA: 'เลโก้', brandQuoteB: 'LEGO', idA: '10302', idB: '10302' })).verdict, 'identical');
+});
+
+test('evidence check leaves different and uncertain verdicts alone', () => {
+  assert.equal(verifyEvidence(a, bare, claim({ verdict: 'different', brand: 'none' })).verdict, 'different');
 });

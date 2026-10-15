@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKUdesk</title>
+<meta name="description" content="One agent that finds the cheapest landed cost, prices a resale and checks arbitrage, only for identical products.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231a56db'/%3E%3Cpath d='M9 17l5 5 9-12' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap bar">
+    <div class="brand"><span class="logo" aria-hidden="true">✓</span><strong>SKUdesk</strong></div>
+    <div class="chips" id="status" aria-live="polite"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <h1>Buy, sell and arbitrage, only for the identical product.</h1>
+    <p>Enter a product with its set or model number. Gemini checks every listing against it. If nothing is provably the same item, or no gap survives the costs, the answer is no. Nothing is bought without your approval.</p>
+  </section>
+
+  <form id="form" class="ask" autocomplete="off">
+    <label class="field grow">
+      <span>Product</span>
+      <input id="query" name="query" required minlength="3" maxlength="80" placeholder="LEGO 10294 Titanic" spellcheck="false">
+    </label>
+    <label class="field">
+      <span>Market</span>
+      <select id="market" name="market"></select>
+    </label>
+    <button id="go" type="submit" class="primary">Check</button>
+  </form>
+  <div class="examples" id="examples" aria-label="Examples"></div>
+
+  <div id="busy" class="busy" hidden role="status"><span class="spinner" aria-hidden="true"></span><span id="busy-text">Searching listings…</span></div>
+  <div id="error" class="alert" hidden role="alert"></div>
+
+  <section id="result" hidden>
+    <div id="headline" class="headline"></div>
+
+    <div class="grid3" id="cards"></div>
+
+    <section class="panel" id="gate-panel">
+      <h2>Identity gate</h2>
+      <p class="muted" id="gate-sum"></p>
+      <div class="bar-split" id="gate-bar" aria-hidden="true"></div>
+      <h3>Passed as identical</h3>
+      <div id="identical" class="list"></div>
+      <div id="flagged-box" hidden>
+        <h3>Same product, price not trusted</h3>
+        <div id="flagged" class="list"></div>
+      </div>
+      <details class="more">
+        <summary id="rejected-sum">Rejected listings</summary>
+        <div id="rejected" class="list"></div>
+      </details>
+    </section>
+
+    <section class="panel" id="approval-panel" hidden>
+      <h2>Needs your approval</h2>
+      <div id="approval"></div>
+    </section>
+
+    <details class="panel more" id="assump">
+      <summary>Assumptions and caveats</summary>
+      <ul id="notes"></ul>
+      <p class="muted" id="assump-list"></p>
+    </details>
+  </section>
+
+  <section class="panel" id="scans-panel" hidden>
+    <h2>Latest scheduled scans</h2>
+    <p class="muted">Cloud Scheduler re-checks the watchlist once a day. Click one to open it.</p>
+    <div id="scans" class="list"></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Prices are asking prices from Google Shopping (via SerpApi) and, when configured, eBay. SKUdesk never holds payment details; approving only unlocks the seller link and logs your decision.</p>
+</footer>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

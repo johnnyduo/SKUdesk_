@@ -1,0 +1,350 @@
+{
+ "_note": "Real SerpApi google_shopping response captured 2026-10-15 (q=LEGO 10294 Titanic, gl=us), trimmed to the fields the adapter reads.",
+ "search_parameters": {
+  "engine": "google_shopping",
+  "q": "LEGO 10294 Titanic",
+  "google_domain": "google.com",
+  "hl": "en",
+  "gl": "us",
+  "device": "desktop"
+ },
+ "shopping_results": [
+  {
+   "position": 1,
+   "title": "LEGO 10294 Titanic",
+   "product_id": "16740738387653464275",
+   "source": "LEGO.com",
+   "price": "$679.99",
+   "extracted_price": 679.99,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 2,
+   "title": "Lego Icons Titanic 10294 Good Condition (boxes And Manuals Only)",
+   "product_id": "8352986356129051311",
+   "source": "eBay",
+   "price": "$150.00",
+   "extracted_price": 150,
+   "second_hand_condition": "pre-owned"
+  },
+  {
+   "position": 3,
+   "title": "Vintage Titanic Building Block Collectible 9,090 Pieces Set 10294 Long",
+   "product_id": "2577968509005813335",
+   "source": "eBay",
+   "price": "$531.52",
+   "extracted_price": 531.52,
+   "second_hand_condition": "pre-owned",
+   "tag": "5% OFF"
+  },
+  {
+   "position": 4,
+   "title": "LEGO Titanic 10294 LEGO Icons Buy online at the Official LEGO Shop US",
+   "product_id": "14669087255382384228",
+   "source": "Tecni Isuzu Ltda",
+   "price": "$19.00",
+   "extracted_price": 19
+  },
+  {
+   "position": 5,
+   "title": "9090pcs Titanic Cruise Boat Ship Model Bricks Building Blocks 10294",
+   "product_id": "473522515689501464",
+   "source": "eBay - rinishj_0",
+   "price": "$202.80",
+   "extracted_price": 202.8,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 6,
+   "title": "LEGO Creator Expert Titanic 10294 Biggest Set Ship",
+   "product_id": "4026203009391370615",
+   "source": "tiendaregalos",
+   "price": "$11.00",
+   "extracted_price": 11
+  },
+  {
+   "position": 7,
+   "title": "Brick Shine Light Kit for LEGO Titanic 10294",
+   "product_id": "17244018781949428576",
+   "source": "eBay - goodstuffworld",
+   "price": "$56.00",
+   "extracted_price": 56,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 8,
+   "title": "LEGO Titanic #10294 Largest Lego Set 9,090 Pieces In Original Shipping Box NEW - New Toys & Collectibles | Size: s",
+   "product_id": "9431987423698567258",
+   "source": "Mercari",
+   "price": "$945.00",
+   "extracted_price": 945
+  },
+  {
+   "position": 9,
+   "title": "Titanic 10294 Model Building Blocks Toy Gift Set Creator Style 9090pcs",
+   "product_id": "8976547681763186185",
+   "source": "eBay",
+   "price": "$282.17",
+   "extracted_price": 282.17,
+   "delivery": "Free delivery",
+   "old_price": "$300",
+   "extracted_old_price": 300,
+   "tag": "5% OFF"
+  },
+  {
+   "position": 10,
+   "title": "LEGO TITANIC 10294 (LEGO EXCLUSIVE) - New Toys & Collectibles | Color: Black | Size: s",
+   "product_id": "11895335690934807036",
+   "source": "Mercari",
+   "price": "$1,197.00",
+   "extracted_price": 1197,
+   "old_price": "$1,500",
+   "extracted_old_price": 1500,
+   "tag": "20% OFF"
+  },
+  {
+   "position": 11,
+   "title": "Rms Titanic Building Replica Model Collectible Ship 9090 Piece Build Set",
+   "product_id": "5984563529737813562",
+   "source": "eBay - sunflowershop_9988",
+   "price": "$259.60",
+   "extracted_price": 259.6,
+   "old_price": "$295",
+   "extracted_old_price": 295,
+   "tag": "12% OFF"
+  },
+  {
+   "position": 12,
+   "title": "LEGO Titanic 10294 - New Toys & Collectibles",
+   "product_id": "17012755305017472880",
+   "source": "Mercari",
+   "price": "$635.00",
+   "extracted_price": 635,
+   "old_price": "$672",
+   "extracted_old_price": 672,
+   "tag": "5% OFF"
+  },
+  {
+   "position": 13,
+   "title": "Titanic 10294 Building Blocks Gift Toy Set 9090Pcs",
+   "product_id": "904533749596128702",
+   "source": "eBay",
+   "price": "$279.90",
+   "extracted_price": 279.9
+  },
+  {
+   "position": 14,
+   "title": "LEGO Creator Expert: Titanic (10294) *BRANDNEW & SEALED IN MANUFACTURE CARDBOARD - New Electronics | Color: Black",
+   "product_id": "16717387627525006461",
+   "source": "Mercari",
+   "price": "$1,424.00",
+   "extracted_price": 1424,
+   "delivery": "Free delivery",
+   "old_price": "$1,499",
+   "extracted_old_price": 1499,
+   "tag": "5% OFF"
+  },
+  {
+   "position": 15,
+   "title": "Game Of Bricks Led Nameplate For Lego Titanic 10294",
+   "product_id": "8771211224856539804",
+   "source": "eBay - gameofbricks.eu",
+   "price": "$21.99",
+   "extracted_price": 21.99,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 16,
+   "title": "Lego 93273pb166 Titanic 10294 Icons Spare Part Curved Slope Liverpool",
+   "product_id": "1422645109857638355",
+   "source": "eBay",
+   "price": "$18.95",
+   "extracted_price": 18.95,
+   "second_hand_condition": "pre-owned"
+  },
+  {
+   "position": 17,
+   "title": "Lego Plastic Flags For Set 10294 Titanic",
+   "product_id": "15197028323067093882",
+   "source": "eBay - friscobricks",
+   "price": "$9.99",
+   "extracted_price": 9.99,
+   "second_hand_condition": "pre-owned"
+  },
+  {
+   "position": 18,
+   "title": "LED Lighting Set Suitable for LEGO Titanic 10294 Building Blocks Lamp Toys(Not Include Model Bricks)",
+   "product_id": "12068346542766937020",
+   "source": "AliExpress - AliExpress-6003228158",
+   "price": "$42.39",
+   "extracted_price": 42.39,
+   "delivery": "Free delivery",
+   "old_price": "$87",
+   "extracted_old_price": 87
+  },
+  {
+   "position": 19,
+   "title": "NEW!! Titanic 10294 Compatible 9090pcs Building Set",
+   "product_id": "14293586981801485876",
+   "source": "eBay",
+   "price": "$349.00",
+   "extracted_price": 349,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 20,
+   "title": "Display Case for LEGO Icons: Titanic - 10294",
+   "product_id": "9279376346936541980",
+   "source": "Brixbox",
+   "price": "$311.62",
+   "extracted_price": 311.62
+  },
+  {
+   "position": 21,
+   "title": "Lego Titanic 10294 Empty Boxes Only Exterior Interior Box Excellent No",
+   "product_id": "10359040797019487321",
+   "source": "eBay",
+   "price": "$74.99",
+   "extracted_price": 74.99,
+   "second_hand_condition": "pre-owned"
+  },
+  {
+   "position": 22,
+   "title": "Lego flags from Titanic set #10294",
+   "product_id": "8451800620949591800",
+   "source": "Whatnot",
+   "price": "$4.00",
+   "extracted_price": 4
+  },
+  {
+   "position": 23,
+   "title": "Replica Lego Titanic No Box No Instructions",
+   "product_id": "10774521124324775865",
+   "source": "eBay",
+   "price": "$350.00",
+   "extracted_price": 350,
+   "second_hand_condition": "pre-owned"
+  },
+  {
+   "position": 24,
+   "title": "LEGO LEGO Titanic 10294 - Toys & Collectibles",
+   "product_id": "1258256388994405840",
+   "source": "Mercari",
+   "price": "$612.75",
+   "extracted_price": 612.75,
+   "second_hand_condition": "pre-owned",
+   "tag": "5% OFF"
+  },
+  {
+   "position": 25,
+   "title": "Titanic 9090 Piece Building Brick Ultimate Kit",
+   "product_id": "13725686427821313824",
+   "source": "eBay - prime-shop-fun-100",
+   "price": "$201.60",
+   "extracted_price": 201.6,
+   "delivery": "Free delivery",
+   "old_price": "$0.02/ct",
+   "extracted_old_price": 0.02
+  },
+  {
+   "position": 26,
+   "title": "LEGO Titanic Flags USA & United Kingdom Set 10294",
+   "product_id": "3828373934750843168",
+   "source": "eBay - privateer-confederation-bricks-and-more",
+   "price": "$17.95",
+   "extracted_price": 17.95,
+   "second_hand_condition": "pre-owned",
+   "tag": "10% OFF"
+  },
+  {
+   "position": 27,
+   "title": "LEGO Titanic 10294 Creator Expert Cruise Building Ship 9k Pieces NEW Compatible - New Toys & Collectibles | Size: s",
+   "product_id": "8635832166666218322",
+   "source": "Mercari",
+   "price": "$350.00",
+   "extracted_price": 350,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 28,
+   "title": "Led Light Kit For Titanic - Compatible With Lego 10294 Set (remote",
+   "product_id": "13525370641445186025",
+   "source": "eBay",
+   "price": "$99.28",
+   "extracted_price": 99.28,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 29,
+   "title": "Led Light Kit For Titanic - Compatible With Lego 10294 Set (classic",
+   "product_id": "11960354675722917172",
+   "source": "eBay - gameofbricks.eu",
+   "price": "$62.99",
+   "extracted_price": 62.99,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 30,
+   "title": "Led Lighting Set For Lego 10294 Titanic Large Cruise Ship",
+   "product_id": "6083599575596668718",
+   "source": "eBay",
+   "price": "$64.75",
+   "extracted_price": 64.75,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 31,
+   "title": "Lego 10294pls01 Titanic Flags Usa & United Kingdom Set 10294",
+   "product_id": "11096793214703720575",
+   "source": "eBay",
+   "price": "$13.99",
+   "extracted_price": 13.99,
+   "second_hand_condition": "pre-owned"
+  },
+  {
+   "position": 32,
+   "title": "Led Light Kit For Titanic - Compatible With Lego 10294 Set (rc+ Sound",
+   "product_id": "5479374229019521645",
+   "source": "eBay - gameofbricks.eu",
+   "price": "$137.99",
+   "extracted_price": 137.99,
+   "delivery": "Free delivery"
+  },
+  {
+   "position": 33,
+   "title": "Led Light Kit For Titanic - Compatible With Lego 10294 Large Building",
+   "product_id": "15135355873227036313",
+   "source": "eBay",
+   "price": "$44.10",
+   "extracted_price": 44.1,
+   "old_price": "$49",
+   "extracted_old_price": 49,
+   "tag": "10% OFF"
+  },
+  {
+   "position": 34,
+   "title": "Authentic Lego 6370720 Flag Sheet Set 10294 Titanic Usa, United",
+   "product_id": "18132373762848895735",
+   "source": "eBay - brickcloud",
+   "price": "$4.98",
+   "extracted_price": 4.98
+  },
+  {
+   "position": 35,
+   "title": "Wall Mount For Lego Titanic 10294 | Durable | Easy Mounting",
+   "product_id": "12790651557352077727",
+   "source": "eBay",
+   "price": "$16.99",
+   "extracted_price": 16.99
+  },
+  {
+   "position": 36,
+   "title": "Display King - Acrylic Photo Frame For Lego Titanic 10294 (new)",
+   "product_id": "10858791646759978440",
+   "source": "eBay - goodstuffworld",
+   "price": "$30.00",
+   "extracted_price": 30,
+   "delivery": "Free delivery"
+  }
+ ]
+}
