@@ -1,0 +1,580 @@
+[
+  {
+    "id": "p01",
+    "category": "same-set-reworded",
+    "expected": "identical",
+    "a": {
+      "id": "a01",
+      "title": "LEGO 75192 Star Wars Millennium Falcon Ultimate Collector Series",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b01",
+      "title": "Ultimate Collector Series Millennium Falcon LEGO Star Wars set 75192 brand new sealed box",
+      "condition": "new_sealed"
+    },
+    "note": "same set number, words reordered"
+  },
+  {
+    "id": "p02",
+    "category": "same-set-reworded",
+    "expected": "identical",
+    "a": {
+      "id": "a02",
+      "title": "LEGO Icons Titanic 10294",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b02",
+      "title": "LEGO 10294 Titanic - factory sealed, unopened",
+      "condition": "new_sealed"
+    },
+    "note": "same set number"
+  },
+  {
+    "id": "p03",
+    "category": "same-name-different-set",
+    "expected": "different",
+    "a": {
+      "id": "a03",
+      "title": "LEGO Star Wars Millennium Falcon 75192 UCS",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b03",
+      "title": "LEGO Star Wars Millennium Falcon 75257 Rise of Skywalker",
+      "condition": "new_sealed"
+    },
+    "note": "75192 vs 75257, both called Millennium Falcon"
+  },
+  {
+    "id": "p04",
+    "category": "same-name-different-set",
+    "expected": "different",
+    "a": {
+      "id": "a04",
+      "title": "LEGO Star Wars AT-AT 75313 Ultimate Collector Series",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b04",
+      "title": "LEGO Star Wars AT-AT 75288",
+      "condition": "new_sealed"
+    },
+    "note": "75313 vs 75288"
+  },
+  {
+    "id": "p05",
+    "category": "same-name-different-set",
+    "expected": "different",
+    "a": {
+      "id": "a05",
+      "title": "LEGO Creator Expert Volkswagen T1 Camper Van 10220",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b05",
+      "title": "LEGO Icons Volkswagen T2 Camper Van 10279",
+      "condition": "new_sealed"
+    },
+    "note": "10220 vs 10279"
+  },
+  {
+    "id": "p06",
+    "category": "same-name-different-set",
+    "expected": "different",
+    "a": {
+      "id": "a06",
+      "title": "LEGO Harry Potter Hogwarts Castle 71043",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b06",
+      "title": "LEGO Harry Potter Hogwarts Castle and Grounds 76419",
+      "condition": "new_sealed"
+    },
+    "note": "71043 vs 76419"
+  },
+  {
+    "id": "p07",
+    "category": "condition",
+    "expected": "different",
+    "a": {
+      "id": "a07",
+      "title": "LEGO Icons Bonsai Tree 10281",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b07",
+      "title": "LEGO 10281 Bonsai Tree - built once, complete with box and instructions",
+      "condition": "used"
+    },
+    "note": "sealed vs built"
+  },
+  {
+    "id": "p08",
+    "category": "condition",
+    "expected": "different",
+    "a": {
+      "id": "a08",
+      "title": "LEGO Ideas Home Alone 21330",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b08",
+      "title": "LEGO Home Alone 21330 box opened, bags still sealed",
+      "condition": "new_open"
+    },
+    "note": "factory seal broken"
+  },
+  {
+    "id": "p09",
+    "category": "imitation",
+    "expected": "different",
+    "a": {
+      "id": "a09",
+      "title": "LEGO Icons Titanic 10294",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b09",
+      "title": "Titanic building block set, compatible with LEGO 10294, not LEGO brand",
+      "condition": "new_sealed"
+    },
+    "note": "compatible third-party blocks"
+  },
+  {
+    "id": "p10",
+    "category": "bundle",
+    "expected": "different",
+    "a": {
+      "id": "a10",
+      "title": "LEGO Botanical Orchid 10311",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b10",
+      "title": "LEGO bundle: Orchid 10311 + Bonsai Tree 10281, both sealed",
+      "condition": "new_sealed"
+    },
+    "note": "one set vs two-set bundle"
+  },
+  {
+    "id": "p11",
+    "category": "partial",
+    "expected": "different",
+    "a": {
+      "id": "a11",
+      "title": "LEGO Star Wars Millennium Falcon 75192",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b11",
+      "title": "Minifigure only from LEGO 75192 Millennium Falcon, new",
+      "condition": "new_sealed"
+    },
+    "note": "single minifigure, not the set"
+  },
+  {
+    "id": "p12",
+    "category": "partial",
+    "expected": "different",
+    "a": {
+      "id": "a12",
+      "title": "LEGO Icons Back to the Future Time Machine 10300",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b12",
+      "title": "Instruction manual booklet only for LEGO 10300 Back to the Future Time Machine",
+      "condition": "new_sealed"
+    },
+    "note": "paper manual only"
+  },
+  {
+    "id": "p13",
+    "category": "same-set-regional",
+    "expected": "identical",
+    "a": {
+      "id": "a13",
+      "title": "LEGO Creator Expert Ford Mustang 10265",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b13",
+      "title": "LEGO Creator Expert 10265 Ford Mustang - Neu & OVP, Versand aus Deutschland",
+      "condition": "new_sealed"
+    },
+    "note": "German listing text, OVP = original packaging"
+  },
+  {
+    "id": "p14",
+    "category": "same-set-regional",
+    "expected": "identical",
+    "a": {
+      "id": "a14",
+      "title": "เลโก้ 10302 ออพติมัส ไพรม์ Transformers ของใหม่ ซีลกล่อง",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b14",
+      "title": "LEGO Icons Optimus Prime 10302 Transformers sealed",
+      "condition": "new_sealed"
+    },
+    "note": "Thai vs English"
+  },
+  {
+    "id": "p15",
+    "category": "same-set-regional",
+    "expected": "identical",
+    "a": {
+      "id": "a15",
+      "title": "レゴ アイコン コロッセオ 10276 新品未開封",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b15",
+      "title": "LEGO Icons Colosseum 10276",
+      "condition": "new_sealed"
+    },
+    "note": "Japanese vs English"
+  },
+  {
+    "id": "p16",
+    "category": "different-product",
+    "expected": "different",
+    "a": {
+      "id": "a16",
+      "title": "LEGO Icons Colosseum 10276",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b16",
+      "title": "LEGO Icons Eiffel Tower 10307",
+      "condition": "new_sealed"
+    },
+    "note": "unrelated sets"
+  },
+  {
+    "id": "p17",
+    "category": "ambiguous",
+    "expected": "uncertain",
+    "a": {
+      "id": "a17",
+      "title": "LEGO Star Wars Millennium Falcon, new in sealed box",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b17",
+      "title": "LEGO Star Wars 75257 Millennium Falcon",
+      "condition": "new_sealed"
+    },
+    "note": "A has no set number; more than one Falcon set exists"
+  },
+  {
+    "id": "p18",
+    "category": "ambiguous",
+    "expected": "uncertain",
+    "a": {
+      "id": "a18",
+      "title": "LEGO Technic Lamborghini sports car, new sealed",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b18",
+      "title": "LEGO Technic 42115 Lamborghini Sian FKP 37",
+      "condition": "new_sealed"
+    },
+    "note": "A has no set number; several Technic Lamborghinis exist"
+  },
+  {
+    "id": "p19",
+    "category": "different-product",
+    "expected": "different",
+    "a": {
+      "id": "a19",
+      "title": "LEGO Technic Lamborghini Sian FKP 37 42115",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b19",
+      "title": "LEGO Technic Ferrari Daytona SP3 42143",
+      "condition": "new_sealed"
+    },
+    "note": "two Technic supercars"
+  },
+  {
+    "id": "p20",
+    "category": "different-product",
+    "expected": "different",
+    "a": {
+      "id": "a20",
+      "title": "LEGO Icons Lion Knights' Castle 10305",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b20",
+      "title": "LEGO Ideas Tree House 21318",
+      "condition": "new_sealed"
+    },
+    "note": "unrelated sets"
+  },
+  {
+    "id": "p21",
+    "category": "same-set-reworded",
+    "expected": "identical",
+    "a": {
+      "id": "a21",
+      "title": "LEGO Icons Jazz Club 10312",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b21",
+      "title": "10312 Jazz Club LEGO modular building, retired set, factory sealed box, ships from Singapore",
+      "condition": "new_sealed"
+    },
+    "note": "extra seller text only"
+  },
+  {
+    "id": "p22",
+    "category": "same-set-reworded",
+    "expected": "identical",
+    "a": {
+      "id": "a22",
+      "title": "LEGO Architecture New York City 21028",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b22",
+      "title": "LEGO 21028 NYC skyline Architecture collection - new, sealed",
+      "condition": "new_sealed"
+    },
+    "note": "same set number"
+  },
+  {
+    "id": "p23",
+    "category": "different-product",
+    "expected": "different",
+    "a": {
+      "id": "a23",
+      "title": "LEGO Icons Galaxy Explorer 10497",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b23",
+      "title": "LEGO Icons NASA Space Shuttle Discovery 10283",
+      "condition": "new_sealed"
+    },
+    "note": "two space sets"
+  },
+  {
+    "id": "p24",
+    "category": "imitation",
+    "expected": "different",
+    "a": {
+      "id": "a24",
+      "title": "LEGO Icons Titanic 10294",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b24",
+      "title": "Custom MOC alternate build instructions (PDF) for LEGO 10294 Titanic",
+      "condition": "unknown"
+    },
+    "note": "digital instructions for a custom build, not a set"
+  },
+  {
+    "id": "p25",
+    "category": "same-name-different-set",
+    "expected": "different",
+    "a": {
+      "id": "a25",
+      "title": "LEGO Star Wars X-wing Starfighter 75355 Ultimate Collector Series",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b25",
+      "title": "LEGO Star Wars Luke Skywalker's X-wing Fighter 75301",
+      "condition": "new_sealed"
+    },
+    "note": "both X-wings"
+  },
+  {
+    "id": "p26",
+    "category": "same-name-different-set",
+    "expected": "different",
+    "a": {
+      "id": "a26",
+      "title": "LEGO Star Wars Imperial Star Destroyer 75252",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b26",
+      "title": "LEGO Star Wars First Order Star Destroyer 75190",
+      "condition": "new_sealed"
+    },
+    "note": "two Star Destroyers"
+  },
+  {
+    "id": "p27",
+    "category": "condition",
+    "expected": "different",
+    "a": {
+      "id": "a27",
+      "title": "LEGO Star Wars X-wing Starfighter 75355 UCS",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b27",
+      "title": "LEGO 75355 X-wing Starfighter - open box, numbered bags sealed, missing nothing",
+      "condition": "new_open"
+    },
+    "note": "opened box"
+  },
+  {
+    "id": "p28",
+    "category": "same-set-reworded",
+    "expected": "identical",
+    "a": {
+      "id": "a28",
+      "title": "LEGO Icons Optimus Prime 10302",
+      "description": "Transformers collectable robot that converts to a truck. Age 18+.",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b28",
+      "title": "Optimus Prime transformer LEGO set",
+      "description": "Official LEGO 10302, new in factory-sealed box.",
+      "condition": "new_sealed"
+    },
+    "note": "set number only in B's description"
+  },
+  {
+    "id": "p29",
+    "category": "ambiguous",
+    "expected": "uncertain",
+    "a": {
+      "id": "a29",
+      "title": "LEGO Harry Potter Hogwarts Castle, new",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b29",
+      "title": "LEGO Harry Potter 76419 Hogwarts Castle and Grounds",
+      "condition": "new_sealed"
+    },
+    "note": "A has no set number; two Hogwarts Castle sets exist"
+  },
+  {
+    "id": "p30",
+    "category": "same-set-reworded",
+    "expected": "identical",
+    "a": {
+      "id": "a30",
+      "title": "LEGO Ideas Home Alone 21330",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b30",
+      "title": "Home Alone McCallister House LEGO 21330 sealed new",
+      "condition": "new_sealed"
+    },
+    "note": "same set number"
+  },
+  {
+    "id": "p31",
+    "category": "held-out",
+    "expected": "uncertain",
+    "a": {
+      "id": "a31",
+      "title": "LEGO Star Wars AT-AT, new sealed box",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b31",
+      "title": "LEGO Star Wars 75313 AT-AT Ultimate Collector Series",
+      "condition": "new_sealed"
+    },
+    "note": "held-out: A has no set number; two AT-AT sets exist"
+  },
+  {
+    "id": "p32",
+    "category": "held-out",
+    "expected": "identical",
+    "a": {
+      "id": "a32",
+      "title": "LEGO Icons 10300 Back to the Future Time Machine",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b32",
+      "title": "Back to the Future Time Machine DeLorean LEGO set 10300, brand new, sealed",
+      "condition": "new_sealed"
+    },
+    "note": "held-out: same set number"
+  },
+  {
+    "id": "p33",
+    "category": "held-out",
+    "expected": "different",
+    "a": {
+      "id": "a33",
+      "title": "LEGO Icons Ford Mustang 10265",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b33",
+      "title": "LEGO Speed Champions Ford Mustang 76920",
+      "condition": "new_sealed"
+    },
+    "note": "held-out: two Mustang sets"
+  },
+  {
+    "id": "p34",
+    "category": "held-out",
+    "expected": "different",
+    "a": {
+      "id": "a34",
+      "title": "LEGO Icons Bonsai Tree 10281",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b34",
+      "title": "LEGO Icons Bonsai Tree 10281 - lot of 2 sealed boxes",
+      "condition": "new_sealed"
+    },
+    "note": "held-out: quantity 1 vs 2"
+  },
+  {
+    "id": "p35",
+    "category": "held-out",
+    "expected": "identical",
+    "a": {
+      "id": "a35",
+      "title": "lego 10307 eifel tower new",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b35",
+      "title": "LEGO Icons Eiffel Tower 10307",
+      "condition": "new_sealed"
+    },
+    "note": "held-out: typo in title, same set number"
+  },
+  {
+    "id": "p36",
+    "category": "held-out",
+    "expected": "different",
+    "a": {
+      "id": "a36",
+      "title": "LEGO Icons Optimus Prime 10302",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b36",
+      "title": "Optimus Prime 10302 building set replica, unbranded, no original box",
+      "condition": "unknown"
+    },
+    "note": "held-out: unbranded replica"
+  }
+]
