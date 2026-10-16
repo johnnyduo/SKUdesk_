@@ -67,6 +67,15 @@ export function cutout(img: HTMLImageElement): HTMLCanvasElement | null {
   return out;
 }
 
+function averageColor(img: HTMLImageElement): [number, number, number] {
+  const c = document.createElement('canvas');
+  c.width = c.height = 1;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
+  g.drawImage(img, 0, 0, 1, 1);
+  const d = g.getImageData(0, 0, 1, 1).data;
+  return [d[0] / 255, d[1] / 255, d[2] / 255];
+}
+
 function shadowTexture(T: any): any {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
@@ -83,7 +92,7 @@ export function createPhotoViewer(src: string, symbol: string, name: string, sub
   const reset = h('button', { type: 'button', class: 'p3d-reset', 'aria-label': 'Reset view', hidden: true }, '↺');
   const hint = h('div', { class: 'p3d-hint', 'aria-hidden': 'true' }, 'drag to rotate · photo from the best offer');
   const top = h('div', { class: 'p3d-top' }, h('div', { class: 'p3d-id' }, h('span', { class: 'p3d-dot', 'aria-hidden': 'true' }), h('span', { class: 'p3d-sym mono' }, symbol)), h('div', { class: 'p3d-name' }, name), h('div', { class: 'p3d-compat' }, sub));
-  const root = h('div', { class: 'p3d p3d-photo3d', role: 'group', 'aria-label': `${name}: 3D product viewer`, 'data-model': symbol }, h('div', { class: 'p3d-glow', 'aria-hidden': 'true' }), stage, top, h('div', { class: 'p3d-bot' }, hint, reset));
+  const root = h('div', { class: 'p3d p3d-photo3d', role: 'group', 'aria-label': `${name}: 3D product viewer`, 'data-model': symbol }, h('div', { class: 'p3d-glow', 'aria-hidden': 'true' }), stage, top, h('div', { class: 'p3d-bot' }, hint), reset);
   root.style.setProperty('--acc', accent);
 
   let dead = false;
@@ -103,6 +112,7 @@ export function createPhotoViewer(src: string, symbol: string, name: string, sub
       const camera = new T.PerspectiveCamera(32, 1, 0.1, 50);
 
       const cut = cutout(img);
+      root.dataset.mode = cut ? 'cutout' : 'box';
       const source: CanvasImageSource = cut ?? img;
       const sw = cut ? cut.width : img.naturalWidth, sh = cut ? cut.height : img.naturalHeight;
       const aspect = Math.max(0.4, Math.min(2.5, sw / Math.max(sh, 1)));
@@ -112,16 +122,27 @@ export function createPhotoViewer(src: string, symbol: string, name: string, sub
       tex.colorSpace = T.SRGBColorSpace;
       tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
       tex.needsUpdate = true;
-      const plane = new T.PlaneGeometry(wid, hgt);
       const card = new T.Group();
-      const thick = Math.min(wid, hgt) * 0.07;
-      const LAYERS = 9;
       const mats: any[] = [];
-      const faceMat = (color: number): any => { const m = new T.MeshStandardMaterial(cut ? { map: tex, alphaTest: 0.4, roughness: 0.5, metalness: 0.05, color } : { map: tex, roughness: 0.5, metalness: 0.05, color }); mats.push(m); return m; };
-      // the sides: dark copies of the cutout stacked between the front and the back
-      for (let i = 1; i < LAYERS - 1; i++) { const m = new T.Mesh(plane, faceMat(0x4a4d4a)); m.position.z = thick * (i / (LAYERS - 1) - 0.5); card.add(m); }
-      const front = new T.Mesh(plane, faceMat(0xffffff)); front.position.z = thick / 2; card.add(front);
-      const backM = new T.Mesh(plane, faceMat(0xdddddd)); backM.position.z = -thick / 2; backM.rotation.y = Math.PI; card.add(backM);
+      const geos: any[] = [];
+      if (cut) {
+        // a cutout: the product itself, with a little depth made of dark copies between a front and a back
+        const plane = new T.PlaneGeometry(wid, hgt); geos.push(plane);
+        const thick = Math.min(wid, hgt) * 0.07, LAYERS = 9;
+        const faceMat = (color: number): any => { const m = new T.MeshStandardMaterial({ map: tex, alphaTest: 0.4, roughness: 0.5, metalness: 0.05, color }); mats.push(m); return m; };
+        for (let i = 1; i < LAYERS - 1; i++) { const m = new T.Mesh(plane, faceMat(0x4a4d4a)); m.position.z = thick * (i / (LAYERS - 1) - 0.5); card.add(m); }
+        const front = new T.Mesh(plane, faceMat(0xffffff)); front.position.z = thick / 2; card.add(front);
+        const back = new T.Mesh(plane, faceMat(0xdddddd)); back.position.z = -thick / 2; back.rotation.y = Math.PI; card.add(back);
+      } else {
+        // a boxed product: a real box with the picture on the front, sides and back in the picture's own colour
+        const g = new T.BoxGeometry(wid, hgt, Math.min(wid, hgt) * 0.3); geos.push(g);
+        const avg = averageColor(img);
+        const ch = (v: number, k: number): number => Math.max(0, Math.min(255, Math.round(v * k * 255)));
+        const shade = (k: number): number => (ch(avg[0], k) << 16) | (ch(avg[1], k) << 8) | ch(avg[2], k);
+        const mk = (o: any): any => { const m = new T.MeshStandardMaterial({ roughness: 0.55, metalness: 0.04, ...o }); mats.push(m); return m; };
+        const side = mk({ color: shade(0.62) }), rear = mk({ color: shade(0.5) });
+        card.add(new T.Mesh(g, [side, side, side, side, mk({ map: tex }), rear]));
+      }
       scene.add(card);
       const shadow = new T.Mesh(new T.PlaneGeometry(wid * 1.5, wid * 0.5), new T.MeshBasicMaterial({ map: shadowTexture(T), transparent: true, depthWrite: false }));
       shadow.rotation.x = -Math.PI / 2; shadow.position.y = -hgt / 2 - 0.12;
@@ -169,7 +190,7 @@ export function createPhotoViewer(src: string, symbol: string, name: string, sub
       stage.querySelector('.p3d-art')?.remove();
       stage.append(canvas);
       loop();
-      cleanup = (): void => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); tex.dispose(); plane.dispose(); mats.forEach((m) => m.dispose()); renderer.dispose(); };
+      cleanup = (): void => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); tex.dispose(); geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); renderer.dispose(); };
     } catch { /* no WebGL or the photo could not be read: the flat photo stays */ }
   };
   void start();

@@ -373,3 +373,5 @@
 .mk-bid.cross{background:rgba(62,213,152,.08);box-shadow:inset 2px 0 0 var(--up)}
 .mk-bk-verdict{margin:0;padding:8px 12px;border-top:1px solid var(--hair);font-size:12px;line-height:1.5;color:var(--txt)}
 @media (max-width:699px){.mk-bkh,.mk-bk,.mk-bid{grid-template-columns:72px minmax(0,1fr) 54px 70px}}
+.mk-tr.fresh{animation:mk-flash 1.8s ease-out}
+@media (prefers-reduced-motion:reduce){.mk-tr.fresh{animation:none}}

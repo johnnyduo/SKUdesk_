@@ -3,6 +3,7 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
+import { deflateSync } from 'node:zlib';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { createApp } from '../src/app.ts';
 import { getLimits } from '../src/domain.ts';
@@ -10,15 +11,33 @@ import { MemoryStore, Quota } from '../src/store.ts';
 import type { Offer } from '../src/types.ts';
 
 const OWNER = 'e2e-owner-key';
-const offer = (seller: string, title: string, priceCents: number, channel: Offer['channel'] = 'retailer'): Offer => ({
-  id: `${seller}-${priceCents}`, title, seller, channel, priceCents, currency: 'USD', shippingCents: 0, secondHand: false, url: `https://example.test/${seller}`, origin: 'serpapi',
+const offer = (seller: string, title: string, priceCents: number, channel: Offer['channel'] = 'retailer', thumbnail?: string): Offer => ({
+  id: `${seller}-${priceCents}`, title, seller, channel, priceCents, currency: 'USD', shippingCents: 0, secondHand: false, url: `https://example.test/${seller}`, origin: 'serpapi', thumbnail,
 });
+
+// Two small pictures the image proxy gets in place of Google's: a product on a white backdrop, and a full-bleed box shot.
+const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+const crc = (b: Buffer): number => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+function png(w: number, h: number, px: (x: number, y: number) => [number, number, number]): Buffer {
+  const chunk = (type: string, data: Buffer): Buffer => { const t = Buffer.concat([Buffer.from(type), data]); const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const c = Buffer.alloc(4); c.writeUInt32BE(crc(t)); return Buffer.concat([len, t, c]); };
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const [r, g, b] = px(x, y); const i = y * (w * 3 + 1) + 1 + x * 3; raw[i] = r; raw[i + 1] = g; raw[i + 2] = b; }
+  const head = Buffer.alloc(13); head.writeUInt32BE(w, 0); head.writeUInt32BE(h, 4); head[8] = 8; head[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', head), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+}
+const PICTURES: Record<string, Buffer> = {
+  'cut.png': png(160, 160, (x, y) => (x > 40 && x < 120 && y > 50 && y < 110 ? [200, 30, 30] : [255, 255, 255])),
+  'box.png': png(160, 160, (x, y) => [20 + x / 2, 30 + y / 3, 60]),
+};
+const realFetch = globalThis.fetch;
+const THUMB = 'https://encrypted-tbn0.gstatic.com/images?q=';
 const OFFERS = [
   offer('LEGO.com', 'LEGO 10294 Titanic', 67999),
-  offer('Mercari', 'LEGO Titanic 10294 sealed', 63500, 'marketplace'),
+  offer('Mercari', 'LEGO Titanic 10294 sealed', 63500, 'marketplace', `${THUMB}cut.png`),
   offer('Bait', 'LEGO 10294 Titanic', 2100),
   offer('Parts', 'Light kit for LEGO 10294', 5600),
 ];
+const BOXED = OFFERS.map((o) => (o.thumbnail ? { ...o, thumbnail: `${THUMB}box.png` } : o));
 
 let judged = 0;
 let server: ReturnType<typeof createApp>;
@@ -26,12 +45,18 @@ let base = '';
 let browser: Browser;
 
 before(async () => {
+  globalThis.fetch = (async (input: any, init: any) => {
+    const u = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const m = u.match(/^https:\/\/encrypted-tbn0\.gstatic\.com\/images\?q=(.+)$/);
+    if (m) return new Response(PICTURES[m[1]], { headers: { 'content-type': 'image/png' } });
+    return realFetch(input, init);
+  }) as typeof fetch;
   const store = new MemoryStore();
   server = createApp({
     store, quota: new Quota(store, 50), readPerMin: 100000, analyzePerMin: 1000, scanSecret: 'scan', ownerKey: OWNER, watchlist: [], sources: { serpapi: true, ebay: false }, storeKind: 'memory',
     agent: {
       store, model: 'stub',
-      search: async () => ({ offers: OFFERS, fromCache: false }),
+      search: async (q: string) => ({ offers: /boxed/i.test(q) ? BOXED : OFFERS, fromCache: false }),
       engine: { compare: async (_a, b) => (await new Promise((r) => setTimeout(r, 250 * (++judged % 4))), /light kit/i.test(b.title)
         ? { verdict: 'different', confidence: 0.99, reasons: ['accessory'], mismatches: ['product type'] }
         : { verdict: 'identical', confidence: 0.99, reasons: ['same set number'], mismatches: [], evidence: { brand: 'LEGO', brandQuoteA: 'LEGO', brandQuoteB: 'LEGO', idA: '10294', idB: '10294' } }) },
@@ -46,6 +71,7 @@ before(async () => {
 });
 
 after(async () => {
+  globalThis.fetch = realFetch;
   await browser?.close();
   server?.close();
 });
@@ -310,5 +336,55 @@ describe('the site, end to end', () => {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'no horizontal scroll');
     assert.deepEqual(errors, []);
     await ctx.close();
+  });
+  test('market 3D: a product on a white backdrop becomes a cutout, a box shot becomes a box, both turn', async () => {
+    const post = async (query: string): Promise<void> => { await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query, market: 'us' }) })).text(); };
+    await post('LEGO 10294 Titanic');
+    await post('LEGO 10294 Titanic boxed');
+    const { page, errors } = await open('/market/');
+    await page.waitForSelector('.mk-al .mk-ar');
+    const pick = async (name: string): Promise<void> => { await page.locator('[data-testid=product-picker]').click(); await page.locator('.mk-pk-o').filter({ has: page.getByText(name, { exact: true }) }).click(); };
+    await pick('LEGO 10294 Titanic boxed');
+    await page.waitForSelector('.p3d-photo3d[data-mode=box] canvas', { timeout: 15000 });
+    await pick('LEGO 10294 Titanic');
+    await page.waitForSelector('.p3d-photo3d[data-mode=cutout] canvas', { timeout: 15000 });
+    const canvas = page.locator('.p3d-photo3d canvas');
+    const box = (await canvas.boundingBox())!;
+    assert.ok(box.width > 150 && box.height > 150, 'the 3D view has room');
+    assert.equal(await page.locator('.p3d-reset').isHidden(), true);
+    await page.mouse.move(box.x + 80, box.y + 120); await page.mouse.down(); await page.mouse.move(box.x + 200, box.y + 130, { steps: 6 }); await page.mouse.up();
+    await page.locator('.p3d-reset').waitFor({ state: 'visible' });
+    await page.locator('.p3d-reset').click();
+    await page.locator('.p3d-reset').waitFor({ state: 'hidden' });
+    // a refresh of the data does not throw the turned card away
+    await canvas.focus(); await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(500);
+    assert.equal(await page.locator('.p3d-reset').isVisible(), true);
+    await page.waitForTimeout(21000);
+    assert.equal(await page.locator('.p3d-reset').isVisible(), true, 'the 20 second refresh keeps the view');
+    assert.deepEqual(errors, []);
+    await page.context().close();
+  });
+
+  test('market book is live: it ages, picks up an owner change to the margin floor and flashes the bids that moved', async () => {
+    const { page, errors } = await open('/market/');
+    await page.waitForSelector('[data-testid=bids] .mk-bid');
+    const bidOf = async (id: string): Promise<string> => (await page.locator(`.mk-bid[data-agent=${id}] > .n.buy`).textContent()) ?? '';
+    const before = await bidOf('live');
+    const age = async (): Promise<string> => (await page.locator('[data-testid=book-age]').textContent()) ?? '';
+    assert.match(await age(), /^checked \d+(s| min| h| d) ago$/);
+    const a0 = await age();
+    await page.waitForFunction((x) => document.querySelector('[data-testid=book-age]')?.textContent !== x, a0, { timeout: 5000 });
+    const put = await fetch(`${base}/api/limits`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-skudesk-owner': OWNER }, body: JSON.stringify({ minMarginBps: 2500 }) });
+    assert.equal(put.status, 200);
+    await page.waitForFunction((x) => document.querySelector('.mk-bid[data-agent=live] > .n.buy')?.textContent !== x, before, { timeout: 30000 });
+    const after = await bidOf('live');
+    const num = (t: string): number => Number(t.replace(/[^0-9.]/g, ''));
+    assert.ok(num(after) < num(before), 'a higher floor lowers every bid');
+    await page.locator('.mk-bid.fresh').first().waitFor({ state: 'attached', timeout: 1000 }).catch(() => {});
+    // restore
+    await fetch(`${base}/api/limits`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-skudesk-owner': OWNER }, body: JSON.stringify({ minMarginBps: 1000 }) });
+    assert.deepEqual(errors, []);
+    await page.context().close();
   });
 });

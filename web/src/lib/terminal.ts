@@ -18,6 +18,13 @@ const POLL_MS = 20000;
 const code = (query: string): string => query.match(/\b\d{4,6}\b/)?.[0] ?? query.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase();
 const pctStr = (p: number): string => `${p > 0 ? '+' : ''}${p.toFixed(2)}%`;
 const dirOf = (p: number): string => (p > 0.005 ? 'up' : p < -0.005 ? 'down' : 'flat');
+const ageText = (iso: string): string => {
+  const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `checked ${s}s ago`;
+  if (s < 3600) return `checked ${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `checked ${Math.floor(s / 3600)} h ago`;
+  return `checked ${Math.floor(s / 86400)} d ago`;
+};
 
 function spark(values: (number | null)[], dir: string): SVGElement {
   const ns = 'http://www.w3.org/2000/svg';
@@ -55,6 +62,8 @@ export function mountTerminal(root: HTMLElement): void {
   let mode: 'line' | 'candles' = 'line';
   let tab = 'chart';
   let lastPrice: number | null = null;
+  let prevKeys: Set<string> | null = null; // what the book showed last time, so rows that changed flash
+  let prevFor = '';
   let viewer: Viewer | null = null;
   const liveBox = h('div', { class: 'mk-tkt-m', 'aria-live': 'polite' });
 
@@ -271,10 +280,12 @@ export function mountTerminal(root: HTMLElement): void {
     const sorted = [...a.identical].sort((x: any, y: any) => x.landedCents - y.landedCents);
     const flaggedAsks = [...(a.flagged ?? [])].sort((x: any, y: any) => x.landedCents - y.landedCents);
     const vsText = (cents: number): HTMLElement => { const v = vsAvg(cents, avg); return h('span', { class: `n mk-vs ${v === null ? '' : dirOf(-v)}` }, v === null ? '-' : pctStr(v)); };
+    const keys = new Set<string>();
+    const isNew = (k: string): boolean => { keys.add(k); return prevKeys !== null && prevFor === selKey && !prevKeys.has(k); };
     const askRow = (p: any, i: number, flag: boolean): HTMLElement => {
       const depth = h('i', { class: flag ? 'flag' : '' });
       depth.style.width = `${flag ? 100 : ((i + 1) / Math.max(1, sorted.length)) * 100}%`;
-      return h('div', { class: `mk-tr mk-bk${i === 0 && !flag ? ' best' : ''}${flag ? ' flag' : ''}` },
+      return h('div', { class: `mk-tr mk-bk${i === 0 && !flag ? ' best' : ''}${flag ? ' flag' : ''}${isNew(`a:${p.offer.seller}:${p.landedCents}`) ? ' fresh' : ''}` },
         h('span', { class: `n ${flag ? 'dn' : 'sell'}` }, money(p.landedCents, cc)),
         h('span', { class: 'mk-who', title: `${p.offer.title} (via ${providerOf(p.offer.origin)})` }, p.offer.url ? safeLink(p.offer.url, p.offer.seller) : p.offer.seller, providerOf(p.offer.origin) === 'Google Shopping' ? null : h('small', {}, providerOf(p.offer.origin))),
         flag ? h('span', { class: 'n mk-vs dn' }, 'bad price') : vsText(p.landedCents),
@@ -286,7 +297,7 @@ export function mountTerminal(root: HTMLElement): void {
     const bids = bidsFor(a, limits?.minMarginBps ?? 1000);
     const win = winner(bids);
     const topBid = bids[0]?.ceilingCents ?? null;
-    const bidRows = bids.map((b) => h('div', { class: `mk-tr mk-bid${b.crosses ? ' cross' : ''}`, 'data-agent': b.policy.id },
+    const bidRows = bids.map((b) => h('div', { class: `mk-tr mk-bid${b.crosses ? ' cross' : ''}${isNew(`b:${b.policy.id}:${b.ceilingCents}`) ? ' fresh' : ''}`, 'data-agent': b.policy.id },
       h('span', { class: 'n buy' }, b.ceilingCents === null ? '-' : money(b.ceilingCents, cc)),
       h('span', { class: 'mk-who', title: b.policy.rule }, b.policy.name, h('small', {}, `${b.policy.rule} · ${(b.floorBps / 100).toFixed(1)}%`)),
       b.ceilingCents === null ? h('span', { class: 'n mk-vs' }, '-') : vsText(b.ceilingCents),
@@ -310,7 +321,7 @@ export function mountTerminal(root: HTMLElement): void {
         ? `${win.policy.name} bids ${money(win.ceilingCents!, cc)}, which reaches the best ask. ${bids.find((b) => b.policy.id === 'live')?.crosses ? 'The live agent clears its own margin floor too, so it files a proposal for a person to approve.' : 'Only the looser policies reach it: the live agent keeps its margin floor and files nothing.'}`
         : `No bid reaches the best ask. It sits ${spread === null ? '' : `${spread.toFixed(1)}% `}above the highest bid, because fees, returns and postage take about ${(((a.assumptions.marketplaceFeeBps + a.assumptions.returnReserveBps) / 100)).toFixed(0)}% of a resale.`;
     el.book.replaceChildren(
-      h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book'), h('span', { class: 'mk-ph-r' }, code(a.query))),
+      h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book'), h('span', { class: 'mk-ph-r', 'data-age': a.createdAt, 'data-testid': 'book-age' }, ageText(a.createdAt))),
       h('div', { class: 'mk-th mk-bkh' }, h('span', {}, 'Landed'), h('span', {}, 'Seller'), h('span', {}, 'vs avg'), h('span', {}, 'Depth')),
       h('div', { class: 'mk-sidehead' }, 'Asks: what sellers want, via Google Shopping'),
       h('div', { class: 'mk-tbody mk-asks' }, askRows.length ? askRows : [h('p', { class: 'mk-none' }, 'No offer passed the identity gate. The gate would rather say no than guess.')]),
@@ -322,6 +333,7 @@ export function mountTerminal(root: HTMLElement): void {
       setAside.length ? h('div', { class: 'mk-tbody' }, setAside) : null,
       h('div', { class: 'mk-bk-sum' }, best ? h('span', {}, 'Best ask ', h('b', { class: 'n' }, money(best.landedCents, cc)), bestPct === null ? '' : ` · ${pctStr(bestPct)} vs retail`) : h('span', {}, 'No best ask'), h('span', { class: 'dim' }, `${a.identical.length} identical · ${(a.flagged ?? []).length} set aside`)),
       ticket);
+    prevKeys = keys; prevFor = selKey;
   }
 
   async function runLive(query: string, market: string, msg: HTMLElement, btn: HTMLButtonElement): Promise<void> {
@@ -384,7 +396,7 @@ export function mountTerminal(root: HTMLElement): void {
   void api('/api/status').then((s) => { status = s; });
   void refresh();
   setInterval(() => void refresh(), POLL_MS);
-  setInterval(paintClock, 1000);
+  setInterval(() => { paintClock(); el.book.querySelectorAll<HTMLElement>('[data-age]').forEach((n) => { n.textContent = ageText(n.dataset.age!); }); }, 1000);
   void $;
   void deviceLine;
   void flashClass;
