@@ -1,9 +1,11 @@
 import { createApp } from './app.ts';
 import { createIdentityEngine } from './identity.ts';
-import { geminiGenerate } from './gemini.ts';
+import { geminiGenerate, geminiSee } from './gemini.ts';
 import { MARKETS, searchShopping } from './serpapi.ts';
 import { searchEbay } from './ebay.ts';
 import { merchantConfigFrom } from './merchant.ts';
+import { fetchPicture } from './images.ts';
+import { createVisionEngine } from './vision.ts';
 import { estimateRetail } from './retail.ts';
 import { briefingFor } from './briefing.ts';
 import { getLimits } from './domain.ts';
@@ -29,6 +31,7 @@ const ebay = env('EBAY_CLIENT_ID') && env('EBAY_CLIENT_SECRET') ? { clientId: en
 
 const generate = geminiGenerate(need('GEMINI_API_KEY'), model);
 const engine = createIdentityEngine(generate);
+const vision = createVisionEngine(geminiSee(need('GEMINI_API_KEY'), model), (url) => fetchPicture(url));
 
 // WATCHLIST="LEGO 10294 Titanic|us;LEGO 21330 Home Alone|us"
 const watchlist = (env('WATCHLIST') ?? '').split(';').map((s) => s.trim()).filter(Boolean).map((s) => {
@@ -54,7 +57,7 @@ const app = createApp({
   scanMax: Number(env('SCAN_MAX') ?? 3),
   sources: { serpapi: true, ebay: Boolean(ebay) },
   agent: {
-    engine, store, model,
+    engine, vision, store, model,
     retail: async (query, currency) => (await estimateRetail(generate, store, query, currency)).cents,
     briefing: (facts) => briefingFor(generate, facts),
     limits: () => getLimits(store),

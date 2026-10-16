@@ -74,6 +74,7 @@ before(async () => {
     store, quota: new Quota(store, 50), readPerMin: 100000, analyzePerMin: 1000, scanSecret: 'scan', ownerKey: OWNER, merchant: { config: merchantConfigFrom((k) => merchantEnv[k]), fetch: googleStub, sleep: async () => {} }, watchlist: [], sources: { serpapi: true, ebay: false }, storeKind: 'memory',
     agent: {
       store, model: 'stub',
+      vision: { check: async (_q: string, o: Offer) => (o.thumbnail ? { verdict: 'matches' as const, seen: 'a boxed set on a white background', reasons: [] } : null) },
       search: async (q: string) => ({ offers: /boxed/i.test(q) ? BOXED : OFFERS, fromCache: false }),
       engine: { compare: async (_a, b) => (await new Promise((r) => setTimeout(r, 250 * (++judged % 4))), /light kit/i.test(b.title)
         ? { verdict: 'different', confidence: 0.99, reasons: ['accessory'], mismatches: ['product type'] }

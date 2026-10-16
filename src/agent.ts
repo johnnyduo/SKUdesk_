@@ -4,6 +4,7 @@ import { MARKETS } from './serpapi.ts';
 import { hashKey, type Store } from './store.ts';
 import type { Analysis, AnalyzeEvent, ArbitrageView, Assumptions, Flagged, Gated, Offer, Priced, Proposal, SellView } from './types.ts';
 import { briefingFor, type BriefingFacts } from './briefing.ts';
+import type { VisionEngine, VisionResult } from './vision.ts';
 import { randomBytes } from 'node:crypto';
 import { DEFAULT_LIMITS, logEvent, recordHistory, type Limits } from './domain.ts';
 
@@ -28,6 +29,8 @@ export interface AgentDeps {
   engine: Engine;
   // Typical retail price in cents for the queried product, or null when unknown. Optional.
   retail?: (query: string, currency: string) => Promise<number | null>;
+  // Photo check: Gemini looks at the listing's picture. Optional; it can only take a text match away.
+  vision?: VisionEngine;
   // Plain-language note from the model, grounded in the computed numbers. Optional.
   briefing?: (facts: BriefingFacts) => Promise<string | null>;
   // Owner-set limits and kill switch. Defaults apply when absent.
@@ -57,6 +60,18 @@ async function compareCached(deps: AgentDeps, a: Listing, b: Listing): Promise<I
   if (hit && hit.expiresAt > now) return hit.result;
   const result = await deps.engine.compare(a, b);
   if (!isEngineError(result)) await deps.store.set('identity', id, { result, expiresAt: now + IDENTITY_TTL_MS });
+  return result;
+}
+
+// A photo opinion for the same query and picture does not change, so it is cached like the text verdicts. No opinion is never cached.
+async function visionCached(deps: AgentDeps, query: string, offer: Offer): Promise<VisionResult | null> {
+  if (!deps.vision) return null;
+  const id = hashKey(`${deps.model}|vision|${query.toLowerCase()}|${offer.thumbnail}|${offer.title}`);
+  const hit = await deps.store.get<{ result: VisionResult; expiresAt: number }>('vision', id);
+  const now = (deps.now ?? (() => new Date()))().getTime();
+  if (hit && hit.expiresAt > now) return hit.result;
+  const result = await deps.vision.check(query, offer);
+  if (result) await deps.store.set('vision', id, { result, expiresAt: now + IDENTITY_TTL_MS });
   return result;
 }
 
@@ -142,6 +157,22 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
     return g;
   });
 
+  // Photo check on the listings the text already accepted. A photo that shows something else takes the match away.
+  let photosChecked = 0, photosRefused = 0;
+  const withPhoto = gated.filter((g) => g.verdict === 'identical' && g.offer.thumbnail);
+  if (deps.vision && withPhoto.length) {
+    let seen = 0;
+    await mapLimit(withPhoto, 4, async (g) => {
+      const v = await visionCached(deps, query, g.offer);
+      if (v) {
+        photosChecked++;
+        g.visual = { verdict: v.verdict, seen: v.seen };
+        if (v.verdict === 'different') { photosRefused++; g.verdict = 'different'; g.mismatches = [...g.mismatches, `photo: ${v.seen}`]; }
+      }
+      emit({ type: 'vision', done: ++seen, total: withPhoto.length, verdict: v?.verdict ?? 'unclear', seller: g.offer.seller, seen: v?.seen ?? '' });
+    });
+  }
+
   const passed: Priced[] = gated
     .filter((g) => g.verdict === 'identical')
     .map((g) => {
@@ -192,6 +223,7 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
   if (flagged.length) notes.push(`${flagged.length} offer(s) matched the product but had a price that cannot be believed (under ${RETAIL_FLOOR * 100}% of the recalled retail price or under ${OUTLIER_FLOOR * 100}% of the median identical price), so they were treated as data errors and not traded on.`);
   if (retailCents !== null) notes.push(`Gemini recalls a typical retail price of ${money(retailCents, cur)} for this product. This is recalled knowledge, not a live quote.`);
   notes.push('Resale is assumed at the next cheapest identical price, because a buyer can pick any identical offer.');
+  if (photosChecked) notes.push(`Gemini also looked at ${photosChecked} listing photo${photosChecked === 1 ? '' : 's'}${photosRefused ? `; ${photosRefused} showed something other than the product and ${photosRefused === 1 ? 'was' : 'were'} dropped` : ' and none contradicted the text'}.`);
 
   const counts = { considered: gated.length, identical: passed.length, different: gated.filter((g) => g.verdict === 'different').length, uncertain: gated.filter((g) => g.verdict === 'uncertain').length };
 

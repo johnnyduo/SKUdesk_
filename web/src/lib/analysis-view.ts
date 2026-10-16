@@ -13,6 +13,8 @@ export function offerRow(p: any, cur: string, mode: 'identical' | 'flagged' | 'r
     pills.push(h('span', { class: 'pill good' }, `identical ${Math.round(p.confidence * 100)}%`));
     if (p.quoted?.brandQuote) pills.push(h('span', { class: 'pill q' }, `brand “${p.quoted.brandQuote}”`));
     if (p.quoted?.idQuote) pills.push(h('span', { class: 'pill q' }, `number “${p.quoted.idQuote}”`));
+    if (p.visual && p.visual.verdict !== 'unclear') pills.push(h('span', { class: 'pill good', title: p.visual.seen }, 'photo agrees'));
+    else if (p.visual) pills.push(h('span', { class: 'pill warn', title: p.visual.seen }, 'photo unclear'));
   } else if (mode === 'flagged') {
     pills.push(h('span', { class: 'pill warn' }, 'price looks wrong'));
   } else {
@@ -20,7 +22,7 @@ export function offerRow(p: any, cur: string, mode: 'identical' | 'flagged' | 'r
   }
   const why = mode === 'flagged'
     ? (p.reason === 'retail' ? `under half of the ${money(p.referenceCents, cur)} retail price Gemini recalls` : `under 40% of the ${money(p.referenceCents, cur)} median identical price`) + ', treated as a data error'
-    : mode === 'identical' ? p.reasons?.[0] : (p.mismatches?.[0] || p.reasons?.[0]);
+    : mode === 'identical' ? (p.visual?.seen ? `photo: ${p.visual.seen}` : p.reasons?.[0]) : (p.mismatches?.[0] || p.reasons?.[0]);
   return h('div', { class: 'offer' }, thumbOf(o),
     h('div', { class: 't' }, o.url ? safeLink(o.url, o.title) : h('span', { class: 'title' }, o.title), h('div', { class: 's' }, sub.join(' · '), why ? ` — ${why}` : ''), h('div', { class: 'pills' }, pills)),
     h('div', { class: 'p' }, money(mode === 'rejected' ? o.priceCents : p.landedCents, cur)));

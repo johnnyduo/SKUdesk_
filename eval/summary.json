@@ -1,11 +1,11 @@
 {
   "model": "gemini-3.5-flash-lite",
-  "pairs": 43,
-  "exact": 41,
+  "pairs": 60,
+  "exact": 56,
   "falseIdentical": 0,
-  "missedIdentical": 0,
+  "missedIdentical": 2,
   "engineErrors": 0,
-  "ranAt": "2026-10-15T16:25:36.849Z",
+  "ranAt": "2026-10-16T08:55:25.451Z",
   "categories": [
     "same-set-reworded",
     "same-name-different-set",
@@ -18,6 +18,18 @@
     "ambiguous",
     "held-out",
     "injection",
-    "real-world"
+    "real-world",
+    "phone-same",
+    "phone-storage",
+    "phone-tier",
+    "phone-model",
+    "phone-condition",
+    "phone-accessory",
+    "phone-lock",
+    "phone-missing",
+    "phone-fake",
+    "phone-injection",
+    "phone-thai",
+    "phone-bundle"
   ]
 }

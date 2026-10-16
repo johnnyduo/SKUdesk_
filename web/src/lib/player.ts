@@ -24,6 +24,13 @@ export function scriptOf(a: any): Line[] {
     const q = p.quoted;
     L.push({ stage: 2, tone: q?.brandQuote && q?.idQuote ? 'good' : 'warn', offer: p.offer, text: q?.brandQuote ? `Evidence for ${p.offer.seller}: brand “${q.brandQuote}” and number “${q.idQuote}” are in the listing text. Verified by code.` : `${p.offer.seller}: no quoted evidence on record.` });
   }
+  for (const p of a.identical.concat(a.flagged ?? [])) {
+    if (p.visual) L.push({ stage: 2, tone: p.visual.verdict === 'matches' ? 'good' : 'warn', offer: p.offer, text: `Photo from ${p.offer.seller}: Gemini sees ${p.visual.seen.replace(/[.]$/, '')}. ${p.visual.verdict === 'matches' ? 'It agrees with the text.' : 'Not enough to settle it, so the text verdict stands.'}` });
+  }
+  for (const p of a.rejected) {
+    const m = (p.mismatches ?? []).find((x: string) => x.startsWith('photo:'));
+    if (m) L.push({ stage: 2, tone: 'bad', offer: p.offer, text: `Dropped after the photo check, ${p.offer.seller}: ${m.slice(6).trim()}` });
+  }
   if (!a.identical.length && !(a.flagged ?? []).length) L.push({ stage: 2, tone: 'info', text: 'Nothing passed the gate, so there is no evidence to check.' });
   if (a.retailCents) L.push({ stage: 3, tone: 'info', text: `Gemini recalls a retail price of ${money(a.retailCents, cur)}. This is recalled knowledge, not a live quote.` });
   for (const f of a.flagged ?? []) L.push({ stage: 3, tone: 'warn', offer: f.offer, text: `Set aside: ${f.offer.seller} at ${money(f.offer.priceCents, cur)} is ${f.reason === 'retail' ? 'under half of the recalled retail price' : 'under 40% of the median identical price'}. Treated as a data error.` });

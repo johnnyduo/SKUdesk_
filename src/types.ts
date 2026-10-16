@@ -44,9 +44,16 @@ export interface Quoted {
   idQuote: string | null;
 }
 
+// What Gemini saw in the listing's photo, next to the product that was asked for.
+export interface Visual {
+  verdict: 'matches' | 'different' | 'unclear';
+  seen: string;
+}
+
 export interface Gated {
   offer: Offer;
   quoted?: Quoted;
+  visual?: Visual;
   verdict: IdentityVerdict;
   confidence: number;
   reasons: string[];
@@ -136,6 +143,7 @@ export interface Proposal {
 export type AnalyzeEvent =
   | { type: 'search'; listings: number; fromCache: boolean }
   | { type: 'gate'; done: number; total: number; verdict: 'identical' | 'different' | 'uncertain'; seller: string; title: string; thumbnail?: string }
+  | { type: 'vision'; done: number; total: number; verdict: 'matches' | 'different' | 'unclear'; seller: string; seen: string }
   | { type: 'sanity'; flagged: number; retailCents: number | null }
   | { type: 'economics' }
   | { type: 'briefing' }

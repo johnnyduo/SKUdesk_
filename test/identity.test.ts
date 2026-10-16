@@ -37,7 +37,8 @@ test('prompt carries both listings and the condition rule', () => {
   assert.match(p, /75192/);
   assert.match(p, /Listing A/);
   assert.match(p, /Listing B/);
-  assert.match(p, /factory-sealed/i);
+  assert.match(p, /factory-new and sealed/i);
+  assert.match(p, /storage capacity/i);
 });
 
 test('engine returns the parsed model verdict', async () => {
@@ -94,4 +95,52 @@ test('evidence check accepts a brand written in another script when quotes are v
 
 test('evidence check leaves different and uncertain verdicts alone', () => {
   assert.equal(verifyEvidence(a, bare, claim({ verdict: 'different', brand: 'none' })).verdict, 'different');
+});
+
+// ── phones: storage and model tier are read by code, not trusted to the model ──
+const phone = (title: string): Listing => ({ id: title, title, condition: 'new_sealed' });
+const phoneEvidence = (idA: string, idB: string) => ({ brand: 'Apple', brandQuoteA: 'Apple', brandQuoteB: 'Apple', idA, idB, variantA: null, variantB: null });
+const claimsIdentical = (idA: string, idB: string): IdentityResult => ({ verdict: 'identical', confidence: 0.98, reasons: ['same'], mismatches: [], evidence: phoneEvidence(idA, idB) });
+
+test('a model that says identical cannot override a different storage size in the text', () => {
+  const r = verifyEvidence(phone('Apple iPhone 16 Pro 256GB'), phone('Apple iPhone 16 Pro 512GB Natural Titanium'), claimsIdentical('iPhone 16 Pro', 'iPhone 16 Pro'));
+  assert.equal(r.verdict, 'different');
+  assert.match(r.mismatches.join(' '), /storage differs \(256 GB vs 512 GB\)/);
+  assert.equal(passesGate(r), true === false);
+});
+
+test('1 TB and 1024 GB are the same size', () => {
+  const r = verifyEvidence(phone('Apple iPhone 16 Pro 1TB'), phone('Apple iPhone 16 Pro 1024GB'), claimsIdentical('iPhone 16 Pro', 'iPhone 16 Pro'));
+  assert.equal(r.verdict, 'identical');
+});
+
+test('Pro and Pro Max are different models even when the model says identical', () => {
+  const r = verifyEvidence(phone('Apple iPhone 16 Pro 256GB'), phone('Apple iPhone 16 Pro Max 256GB'), claimsIdentical('iPhone 16 Pro', 'iPhone 16 Pro'));
+  assert.equal(r.verdict, 'different');
+  assert.match(r.mismatches.join(' '), /model tier differs/);
+});
+
+test('a plain model against its Plus or Ultra is different', () => {
+  assert.equal(verifyEvidence(phone('Samsung Galaxy S25 256GB'), phone('Samsung Galaxy S25 Ultra 256GB'), { ...claimsIdentical('Galaxy S25', 'Galaxy S25'), evidence: { ...phoneEvidence('Galaxy S25', 'Galaxy S25'), brand: 'Samsung', brandQuoteA: 'Samsung', brandQuoteB: 'Samsung' } }).verdict, 'different');
+});
+
+test('storage stated by only one listing is uncertain, not identical', () => {
+  const r = verifyEvidence(phone('Apple iPhone 16 Pro'), phone('Apple iPhone 16 Pro 256GB'), claimsIdentical('iPhone 16 Pro', 'iPhone 16 Pro'));
+  assert.equal(r.verdict, 'uncertain');
+  assert.match(r.mismatches.join(' '), /only one listing states a storage capacity/);
+});
+
+test('same storage and tier pass through untouched', () => {
+  const r = verifyEvidence(phone('Apple iPhone 16 Pro 256GB'), phone('iPhone 16 Pro (256 GB) Apple unlocked new'), claimsIdentical('iPhone 16 Pro', 'iPhone 16 Pro'));
+  assert.equal(r.verdict, 'identical');
+});
+
+test('LEGO sets are not affected by the phone checks', () => {
+  const r = verifyEvidence({ id: 'a', title: 'LEGO 75192 Millennium Falcon', condition: 'new_sealed' }, { id: 'b', title: 'LEGO Star Wars 75192 Ultimate Collector Series', condition: 'new_sealed' }, { verdict: 'identical', confidence: 0.97, reasons: [], mismatches: [], evidence: { brand: 'LEGO', brandQuoteA: 'LEGO', brandQuoteB: 'LEGO', idA: '75192', idB: '75192' } });
+  assert.equal(r.verdict, 'identical');
+});
+
+test('RAM sizes are not mistaken for storage', () => {
+  const r = verifyEvidence(phone('Google Pixel 9 Pro 16GB RAM 256GB'), phone('Google Pixel 9 Pro 256GB unlocked'), { ...claimsIdentical('Pixel 9 Pro', 'Pixel 9 Pro'), evidence: { ...phoneEvidence('Pixel 9 Pro', 'Pixel 9 Pro'), brand: 'Google', brandQuoteA: 'Google', brandQuoteB: 'Google' } });
+  assert.equal(r.verdict, 'identical');
 });

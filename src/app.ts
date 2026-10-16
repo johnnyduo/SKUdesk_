@@ -6,6 +6,7 @@ import { clientIp, imageUrlOk, isOwner, RateLimiter, safeEq, SECURITY_HEADERS } 
 import { MARKETS } from './serpapi.ts';
 import { loadSite, serveStatic } from './static.ts';
 import { createMerchantRoutes, type MerchantDeps } from './merchant-routes.ts';
+import { fetchPicture } from './images.ts';
 import { merchantConfigFrom } from './merchant.ts';
 import { hashKey, QuotaExceeded, type Quota, type Store } from './store.ts';
 import type { Analysis, Proposal } from './types.ts';
@@ -113,12 +114,9 @@ export function createApp(deps: AppDeps): Server {
     const key = target.toString();
     let hit = imgCache.get(key);
     if (!hit) {
-      const up = await fetch(target, { signal: AbortSignal.timeout(5000), redirect: 'error' }).catch(() => null);
-      const type = up?.headers.get('content-type') ?? '';
-      if (!up?.ok || !/^image\/(png|jpe?g|webp|gif)/.test(type)) return null;
-      const body = Buffer.from(await up.arrayBuffer());
-      if (body.length > 1_500_000) return null;
-      hit = { type, body };
+      const pic = await fetchPicture(key);
+      if (!pic) return null;
+      hit = pic;
       if (imgCache.size >= 300) imgCache.delete(imgCache.keys().next().value as string);
       imgCache.set(key, hit);
     }
