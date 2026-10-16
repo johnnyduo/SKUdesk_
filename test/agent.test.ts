@@ -230,3 +230,21 @@ test('a margin above 50% is called too good to be true, not arbitrage', async ()
   assert.equal(a.arbitrage?.implausible, true);
   assert.match(a.headline, /Too good to be true/);
 });
+
+test('when the Identity Engine fails for many listings the result is flagged as not a verdict', async () => {
+  const failing = { compare: async (): Promise<IdentityResult> => ({ verdict: 'uncertain', confidence: 0, reasons: [], mismatches: ['engine error: 503'] }) };
+  const d = deps([offer('A', 'SET', 100), offer('B', 'SET', 200)], { engine: failing });
+  const a = await analyze({ query: 'q', market: 'us' }, d);
+  assert.equal(a.degraded, true);
+  assert.match(a.headline, /not a verdict/);
+  assert.equal(a.proposalId, null);
+});
+
+test('a few engine errors are noted but do not void the check', async () => {
+  let n = 0;
+  const flaky = { compare: async (): Promise<IdentityResult> => (++n === 1 ? { verdict: 'uncertain', confidence: 0, reasons: [], mismatches: ['engine error: 503'] } : verdict('identical')) };
+  const offers = ['A', 'B', 'C', 'D'].map((s, i) => offer(s, 'SET', 10000 + i * 1000));
+  const a = await analyze({ query: 'q', market: 'us' }, deps(offers, { engine: flaky, concurrency: 1 }));
+  assert.equal(a.degraded, undefined);
+  assert.ok(a.notes.some((x) => /could not be judged/.test(x)));
+});

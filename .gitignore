@@ -14,3 +14,9 @@ web/.astro/
 .dev.vars
 .dev.vars.*
 .shots/
+video/pipeline/stills/
+video/pipeline/frames/
+video/pipeline/audio/
+video/pipeline/audio-seg/
+video/pipeline/*.wav
+video/pipeline/renderer-data.js

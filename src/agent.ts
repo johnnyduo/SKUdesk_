@@ -190,8 +190,14 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
 
   const counts = { considered: gated.length, identical: passed.length, different: gated.filter((g) => g.verdict === 'different').length, uncertain: gated.filter((g) => g.verdict === 'uncertain').length };
 
+  const engineErrors = gated.filter((g) => g.mismatches.some((m) => m.startsWith('engine error'))).length;
+  const degraded = gated.length > 0 && engineErrors / gated.length >= 0.3;
+  if (engineErrors && !degraded) notes.push(`${engineErrors} listing(s) could not be judged because the Identity Engine was unavailable; they were treated as not provable.`);
+
   let headline: string;
-  if (!buy) {
+  if (degraded) {
+    headline = `The Identity Engine was unavailable for ${engineErrors} of ${gated.length} listings, so this is not a verdict. Nothing was filed. Try again in a minute.`;
+  } else if (!buy) {
     headline = gated.length === 0
       ? `No listings found for "${query}".`
       : `No identical sealed product found. ${counts.considered} listings checked, none cleared the Identity Engine, so there is nothing to buy or compare.`;
@@ -228,6 +234,7 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
     assumptions,
     notes,
     proposalId: null,
+    ...(degraded ? { degraded: true } : {}),
     fromCache,
   };
 
@@ -242,7 +249,9 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
 
   // Every spend needs a human. The agent only ever files a pending proposal, and not at all while the owner has paused it.
   let token: string | undefined;
-  if (buy && limits.paused) {
+  if (degraded) {
+    analysis.notes.push('Upstream errors: no proposal was filed and this check is not counted in the totals.');
+  } else if (buy && limits.paused) {
     analysis.notes.push('The agent is paused by its owner, so no proposal was filed.');
   } else if (buy) {
     token = req.system ? undefined : randomBytes(24).toString('hex');
@@ -272,7 +281,7 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
   await Promise.all([
     logEvent(deps.store, 'analysis', `Checked ${query}`, analysis.headline).catch(() => {}),
     analysis.proposalId ? logEvent(deps.store, 'proposal', `Proposal filed for ${query}`, `${buy!.offer.seller} at ${money(buy!.landedCents, cur)} landed, awaiting a decision`).catch(() => {}) : Promise.resolve(),
-    recordHistory(deps.store, analysis).catch(() => {}),
+    degraded ? Promise.resolve() : recordHistory(deps.store, analysis).catch(() => {}),
   ]);
   const out = token ? { ...analysis, decisionToken: token } : analysis;
   emit({ type: 'done', analysis: out });

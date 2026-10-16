@@ -102,6 +102,8 @@ export interface Analysis {
   assumptions: Assumptions;
   notes: string[];
   proposalId: string | null;
+  // True when the Identity Engine failed for many listings: the answer is not a verdict and nothing is filed.
+  degraded?: boolean;
   fromCache: boolean;
   // Shown only to the requester of the check, never stored with the analysis.
   decisionToken?: string;

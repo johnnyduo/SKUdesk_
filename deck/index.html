@@ -160,6 +160,32 @@
 </section>
 
 <section class="slide">
+  <div class="kicker">Control and security</div>
+  <h2>The owner holds the controls. The agent can never spend.</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Owner mode</h3>
+      <ul>
+        <li>Per-buy limit and margin floor, enforced on every check</li>
+        <li>A kill switch that stops scans, new proposals and approvals</li>
+        <li>Watchlist for the daily Cloud Scheduler scan</li>
+        <li>An audit log of every change and decision</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Hardening</h3>
+      <ul>
+        <li>Owner key in Secret Manager, compared in constant time</li>
+        <li>Approvals need the requester's one-time token or the owner key</li>
+        <li>Strict content policy, no inline script, untrusted listing text only ever set as text</li>
+        <li>Rate limits, a monthly search budget, an allow-listed image proxy</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>SKUdesk</span><span>/app/owner/ · /app/deploy/</span></div>
+</section>
+
+<section class="slide">
   <div class="kicker">Built on Google Cloud</div>
   <h2>Small, real and deployed. Plain web2 end to end.</h2>
   <table>

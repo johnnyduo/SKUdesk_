@@ -4,7 +4,7 @@ One agent for retail buyers and sellers. Given a product, it finds the cheapest 
 
 Built for the Google Cloud AI Builder Cup 2026, Retail & Commerce. The concept and the visual design (stylesheets, fonts, the page's look) build on the team's earlier work. The application code, data layer, Identity Engine and evaluation were written for this competition.
 
-**Live:** https://skudesk.lol (Cloud Run service, direct URL https://skudesk-ij5vrivnta-as.a.run.app) · **Deck:** [deck/SKUdesk-deck.pdf](deck/SKUdesk-deck.pdf) · **Video script:** [video/script.md](video/script.md)
+**Live:** https://skudesk.lol (Cloud Run service, direct URL https://skudesk-ij5vrivnta-as.a.run.app) · **Deck:** [deck/SKUdesk-deck.pdf](deck/SKUdesk-deck.pdf) · **Video script:** [video/script.md](video/script.md) (rebuild with [video/pipeline](video/pipeline))
 
 ## What it does
 

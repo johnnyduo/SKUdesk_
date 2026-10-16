@@ -69,7 +69,7 @@ const publicProposal = (p: Proposal): Omit<Proposal, 'tokenHash'> => {
 
 const latestPerProduct = (all: Analysis[]): Analysis[] => {
   const latest = new Map<string, Analysis>();
-  for (const a of [...all].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) latest.set(`${a.query.toLowerCase()}|${a.market}`, a);
+  for (const a of [...all].filter((x) => !x.degraded).sort((x, y) => x.createdAt.localeCompare(y.createdAt))) latest.set(`${a.query.toLowerCase()}|${a.market}`, a);
   return [...latest.values()].sort((x, y) => y.createdAt.localeCompare(x.createdAt));
 };
 
