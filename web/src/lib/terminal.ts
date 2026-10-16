@@ -2,6 +2,7 @@ import { $, api, h, int, money, safeLink, thumbSrc, verdictLabel, when } from '.
 import { createChart, type Pt } from './chart.ts';
 import { DEVICES, deviceLine, type Device } from './devices.ts';
 import { createViewer, type Viewer } from './product3d.ts';
+import { createPhotoViewer, type PhotoViewer } from './photo3d.ts';
 import { approvalPanel } from './analysis-view.ts';
 import { createRunPanel, streamAnalysis } from './run-panel.ts';
 import { createPicker, type PickItem } from './picker.ts';
@@ -176,20 +177,31 @@ export function mountTerminal(root: HTMLElement): void {
     picker.set(items, curId());
   }
 
+  let photo: PhotoViewer | null = null;
+  let photoKey = '';
   function paintP3d(): void {
     const r = rows.find((x) => x.key === selKey);
     if (selDevice) {
+      photo?.dispose(); photo = null; photoKey = '';
       if (!viewer) { viewer = createViewer(selDevice); } else viewer.set(selDevice);
-      el.p3d.replaceChildren(viewer.el);
-    } else {
-      viewer = null;
-      const src = thumbSrc(r?.thumbnail ?? lot?.analysis.buy?.offer.thumbnail);
-      el.p3d.replaceChildren(h('div', { class: 'p3d p3d-photo', role: 'group', 'aria-label': r?.query ?? 'Product' },
-        h('div', { class: 'p3d-glow', 'aria-hidden': 'true' }),
-        h('div', { class: 'p3d-stage' }, h('div', { class: 'p3d-art' }, src ? h('img', { class: 'p3d-flat', src, alt: '' }) : null)),
-        h('div', { class: 'p3d-top' }, h('div', { class: 'p3d-id' }, h('span', { class: 'p3d-dot', 'aria-hidden': 'true' }), h('span', { class: 'p3d-sym mono' }, r ? code(r.query) : '')), h('div', { class: 'p3d-name' }, r?.query ?? ''), h('div', { class: 'p3d-compat' }, 'Sealed set')),
-        h('div', { class: 'p3d-bot' }, h('div', { class: 'p3d-hint', 'aria-hidden': 'true' }, 'photo from the best offer'))));
+      if (el.p3d.firstElementChild !== viewer.el) el.p3d.replaceChildren(viewer.el);
+      return;
     }
+    viewer = null;
+    const src = thumbSrc(r?.thumbnail ?? lot?.analysis.buy?.offer.thumbnail);
+    const name = r?.query ?? '';
+    const key = `${selKey}|${src ?? ''}`;
+    if (photo && photoKey === key && el.p3d.firstElementChild === photo.el) return; // same product, keep the card where the person turned it
+    photo?.dispose(); photo = null; photoKey = key;
+    if (!src) {
+      el.p3d.replaceChildren(h('div', { class: 'p3d p3d-photo', role: 'group', 'aria-label': name || 'Product' },
+        h('div', { class: 'p3d-glow', 'aria-hidden': 'true' }),
+        h('div', { class: 'p3d-top' }, h('div', { class: 'p3d-id' }, h('span', { class: 'p3d-dot', 'aria-hidden': 'true' }), h('span', { class: 'p3d-sym mono' }, r ? code(r.query) : '')), h('div', { class: 'p3d-name' }, name)),
+        h('div', { class: 'p3d-bot' }, h('div', { class: 'p3d-hint', 'aria-hidden': 'true' }, 'no photo yet'))));
+      return;
+    }
+    photo = createPhotoViewer(src, r ? code(r.query) : '', name, 'Sealed set');
+    el.p3d.replaceChildren(photo.el);
   }
 
   function paintFacts(): void {
