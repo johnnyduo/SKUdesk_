@@ -4,7 +4,8 @@ import { h, money, money0 } from './client.ts';
 // a retail reference line, a last-price tag and a crosshair with a tooltip. Plain SVG, no dependencies.
 
 export interface Pt { t: string; y: number | null; v: number }
-export interface ChartOpts { points: Pt[]; currency: string; refCents?: number | null; mode: 'line' | 'candles' }
+// dots: when a product has no identical offer there is no price to plot, so the listings the gate turned down are shown by price instead.
+export interface ChartOpts { points: Pt[]; currency: string; refCents?: number | null; mode: 'line' | 'candles'; dots?: { y: number; label: string }[] }
 
 const NS = 'http://www.w3.org/2000/svg';
 const svgEl = (tag: string, attrs: Record<string, string | number> = {}): SVGElement => {
@@ -58,6 +59,33 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
     hover = -1;
     const cur = opts.currency;
     const pts = opts.points.filter((p) => p.y !== null);
+    if (pts.length === 0 && opts.dots && opts.dots.length) {
+      // a strip of the listings that were turned down, by price
+      empty.hidden = true;
+      geom = null;
+      const padS = { l: 10, r: 74, t: 30, b: 28 };
+      const ds = [...opts.dots].sort((a, b) => a.y - b.y);
+      const lo0 = ds[0].y, hi0 = ds[ds.length - 1].y, spanS = Math.max(hi0 - lo0, hi0 * 0.05, 1);
+      const lo = lo0 - spanS * 0.1, hi = hi0 + spanS * 0.1;
+      const yS = (v: number): number => padS.t + (1 - (v - lo) / (hi - lo)) * (H - padS.t - padS.b);
+      for (let k = 0; k <= 4; k++) {
+        const v = lo + ((hi - lo) * k) / 4, y = yS(v);
+        svg.append(svgEl('line', { class: 'mk-grid', x1: padS.l, x2: W - padS.r, y1: y, y2: y }));
+        const t = svgEl('text', { class: 'mk-ax', x: W - padS.r + 8, y: y + 4 });
+        t.textContent = hi - lo < 1000 ? money(v, cur) : money0(v, cur);
+        svg.append(t);
+      }
+      const title = svgEl('text', { class: 'mk-ax mk-ax-s', x: padS.l + 2, y: 16 });
+      title.textContent = `NO IDENTICAL OFFER · ${ds.length} LISTINGS THE GATE TURNED DOWN, BY PRICE`;
+      svg.append(title);
+      ds.forEach((d, i) => {
+        const x = padS.l + 14 + (i / Math.max(ds.length - 1, 1)) * (W - padS.l - padS.r - 28), y = yS(d.y);
+        const c = svgEl('circle', { class: 'mk-reject-dot', cx: x, cy: y, r: 5 });
+        const tt = svgEl('title'); tt.textContent = `${money(d.y, cur)} · ${d.label}`; c.append(tt);
+        svg.append(c);
+      });
+      return;
+    }
     if (pts.length === 0) {
       empty.hidden = false;
       empty.replaceChildren(h('b', {}, 'No checks yet'), h('span', {}, 'Run a check on this product and its price starts to build a history here.'));
@@ -65,9 +93,27 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
       return;
     }
     if (pts.length === 1) {
-      empty.hidden = false;
-      empty.replaceChildren(h('b', {}, money(pts[0].y!, cur)), h('span', {}, 'One price so far. The daily scan adds a point each day, and every check you run adds one too.'));
+      // one check so far: its price as a flat line, so the page is not an empty box
+      empty.hidden = true;
       geom = null;
+      const padO = { l: 10, r: 74, t: 30, b: 28 };
+      const v = pts[0].y!, lo = v * 0.97, hi = v * 1.03;
+      const yO = (x: number): number => padO.t + (1 - (x - lo) / (hi - lo)) * (H - padO.t - padO.b);
+      for (let k = 0; k <= 4; k++) {
+        const val = lo + ((hi - lo) * k) / 4, y = yO(val);
+        svg.append(svgEl('line', { class: 'mk-grid', x1: padO.l, x2: W - padO.r, y1: y, y2: y }));
+        const t = svgEl('text', { class: 'mk-ax', x: W - padO.r + 8, y: y + 4 });
+        t.textContent = money(val, cur);
+        svg.append(t);
+      }
+      const y = yO(v);
+      svg.append(svgEl('line', { class: 'mk-lastline', x1: padO.l, x2: W - padO.r, y1: y, y2: y }));
+      svg.append(svgEl('rect', { class: 'mk-tag-up', x: W - padO.r + 2, y: y - 10, width: padO.r - 4, height: 20, rx: 4 }));
+      const tg = svgEl('text', { class: 'mk-tagt', x: W - padO.r + 8, y: y + 4 }); tg.textContent = money(v, cur); svg.append(tg);
+      svg.append(svgEl('circle', { class: 'mk-pulse', cx: W - padO.r, cy: y, r: 4 }), svgEl('circle', { class: 'mk-lastdot', cx: W - padO.r, cy: y, r: 3.5 }));
+      const note = svgEl('text', { class: 'mk-ax mk-ax-s', x: padO.l + 2, y: 16 });
+      note.textContent = `FIRST CHECK · ${new Date(pts[0].t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).toUpperCase()} · THE DAILY SCAN ADDS A POINT EACH NIGHT`;
+      svg.append(note);
       return;
     }
     empty.hidden = true;

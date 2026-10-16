@@ -387,3 +387,6 @@
 .mk-rej .mk-who{white-space:normal;overflow:visible}.mk-rej .mk-who small{display:block;font-size:10.5px;color:var(--dim);line-height:1.25}
 .mk-why{font-size:11.5px;color:var(--amber);line-height:1.3}
 .mk-rejects{max-height:none;overflow:visible}
+
+.mk-reject-dot{fill:rgba(255,178,36,.55);stroke:var(--amber);stroke-width:1}
+.mk-rej .mk-who{overflow-wrap:anywhere}

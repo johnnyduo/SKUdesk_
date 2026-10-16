@@ -255,12 +255,13 @@ export function mountTerminal(root: HTMLElement): void {
     const a = lot?.analysis;
     if (selDevice || !a) {
       chart.update({ points: [], currency: 'USD', mode });
-      el.cap.textContent = selDevice ? 'A reference product has no price history. Run a check to start one.' : '';
+      el.cap.textContent = selDevice ? 'This product has not been checked yet. Run a check to start its price history.' : '';
       return;
     }
     const points: Pt[] = (lot?.series ?? []).map((p) => ({ t: p.t, y: p.buyLandedCents, v: p.identical }));
-    chart.update({ points, currency: a.currency, refCents: a.retailCents, mode });
-    el.cap.textContent = `${points.filter((p) => p.y !== null).length} price points. The daily scan adds one each day and every check you run adds one. Bars show how many offers passed the identity gate.`;
+    const dots = points.every((p) => p.y === null) ? (a.rejected ?? []).map((g: any) => ({ y: g.offer.priceCents, label: `${g.offer.seller}: ${g.offer.title.slice(0, 50)}` })) : undefined;
+    chart.update({ points, currency: a.currency, refCents: dots ? null : a.retailCents, mode, dots });
+    el.cap.textContent = dots?.length ? 'Each dot is a listing that matched the search but was not provably the product. None of them is a price to buy at.' : `${points.filter((p) => p.y !== null).length} price points. The daily scan adds one each day and every check you run adds one. Bars show how many offers passed the identity gate.`;
   }
 
   function paintRecent(): void {

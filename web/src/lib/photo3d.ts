@@ -28,7 +28,7 @@ export function cutout(img: HTMLImageElement): HTMLCanvasElement | null {
   const near = (x: number, y: number): void => { const i = (y * W + x) * 4; if (px[i] > 238 && px[i + 1] > 238 && px[i + 2] > 238) white++; };
   for (let x = 0; x < W; x++) { near(x, 0); near(x, H - 1); }
   for (let y = 0; y < H; y++) { near(0, y); near(W - 1, y); }
-  if (white / n > 0.03) { r = gg = b = 255; }
+  if (white / n > 0.4) { r = gg = b = 255; }
   else {
     // no white to go by: only trim a backdrop that is one flat colour all round
     let spread = 0;

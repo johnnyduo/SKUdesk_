@@ -495,6 +495,8 @@ describe('the site, end to end', () => {
     assert.doesNotMatch(book, /null/, 'no stray text in the book');
     assert.match(book, /none is provably the product/);
     assert.match(await page.locator('[data-testid=rejected] .mk-why').first().textContent() ?? '', /not the same: product type/);
+    assert.ok(await page.locator('.mk-svg .mk-reject-dot').count() >= 1, 'the chart plots the turned-down listings instead of sitting empty');
+    assert.match(await page.locator('.mk-chartp').textContent() ?? '', /NO IDENTICAL OFFER/i);
     assert.deepEqual(errors, []);
     await page.context().close();
   });
