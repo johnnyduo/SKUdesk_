@@ -82,7 +82,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
     const series = opts.mode === 'candles' && candles.length >= 2 ? candles : null;
 
     const ys = series ? series.flatMap((c) => [c.h, c.l]) : pts.map((p) => p.y!);
-    if (opts.refCents) ys.push(opts.refCents);
+    if (opts.refCents && !opts.live) ys.push(opts.refCents); // a practice chart keeps its own scale; the reference line shows only when it falls inside it
     let lo = Math.min(...ys), hi = Math.max(...ys);
     const span = Math.max(hi - lo, hi * 0.01, 1);
     lo -= span * 0.1; hi += span * 0.1;
@@ -116,7 +116,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
     }
 
     // retail reference
-    if (opts.refCents) {
+    if (opts.refCents && (!opts.live || (opts.refCents > lo && opts.refCents < hi))) {
       const y = yOf(opts.refCents);
       svg.append(svgEl('line', { class: 'mk-ref', x1: pad.l, x2: W - pad.r, y1: y, y2: y }));
       const t = svgEl('text', { class: 'mk-ref-t', x: pad.l + 6, y: y - 5 });
