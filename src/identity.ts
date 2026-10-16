@@ -55,7 +55,9 @@ export function buildPrompt(a: Listing, b: Listing): string {
 
 "identical" means a buyer would receive the same physical item either way:
 - same brand and same model name or number (a different model or set number is always different, even in the same line or with a similar name; "Pro", "Pro Max", "Plus", "Ultra", "Mini", "XL" and "a" versions are different models)
-- same variant: storage capacity, color and edition must match whenever both listings state them. If only one listing states a capacity or a color that the other leaves out, the verdict is "uncertain".
+- same variant: storage capacity and color must match whenever both listings state them.
+  - Storage: if exactly one of the two listings states a capacity, the verdict is "uncertain".
+  - Color, carrier and lock status: Listing A is the shopper's request. If Listing A states no color, ANY color in Listing B is acceptable and is never a reason for "uncertain". If A states a color and B shows another, the verdict is "different"; if A states one and B mentions none, it is "uncertain".
 - same contents: a bundle, a case, charger, screen protector, accessory, polybag, parts-only or instructions-only listing is not the product itself
 - same condition class: both factory-new and sealed. A used, refurbished, renewed, open-box, damaged-seal or incomplete listing is different from a factory-new one.
 - same market version: an unlocked phone and a carrier-locked one are different, and so are models made for different regions when their model numbers differ. A regional box or a different GTIN/EAN for the same model is still identical (retailers use per-region barcodes).
@@ -103,6 +105,13 @@ const squash = (s: string): string => s.toLowerCase().replace(/\s+/g, ' ');
 const alnum = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 const textOf = (l: Listing): string => squash([l.title, l.description, l.brand, l.gtin].filter(Boolean).join(' \n '));
 
+// The quote has to be the brand itself. A quote in another script (レゴ for LEGO) is accepted as a rendering of it; a Latin word that is
+// not the brand (the model quoting "Ferrari" as the brand "LEGO") is not.
+const namesBrand = (brand: string, quote: string): boolean => {
+  const b = alnum(brand), q = alnum(quote);
+  return q.includes(b) || (q.length >= 3 && b.includes(q)) || /[^\u0000-\u024f]/.test(quote);
+};
+
 // Facts code can read without a model. Anything the text states twice must agree, or the pair is not identical.
 const STORAGE = /\b(\d{1,4})\s?(gb|tb)\b(?!\s*(?:ram|memory))/gi;
 const TIERS = /\b(pro max|pro xl|pro fold|pro|plus|ultra|mini|xl|fold|max|lite|fe)\b/gi;
@@ -129,7 +138,9 @@ export function verifyEvidence(a: Listing, b: Listing, r: IdentityResult): Ident
   if (!e || !e.brand) problems.push('no brand named in both listings');
   else {
     if (!e.brandQuoteA || !textOf(a).includes(squash(e.brandQuoteA))) problems.push('brand not found in listing A');
+    else if (!namesBrand(e.brand, e.brandQuoteA)) problems.push('the words quoted from listing A do not name the brand');
     if (!e.brandQuoteB || !textOf(b).includes(squash(e.brandQuoteB))) problems.push('brand not found in listing B');
+    else if (!namesBrand(e.brand, e.brandQuoteB)) problems.push('the words quoted from listing B do not name the brand');
     if (!e.idA || !textOf(a).includes(squash(e.idA))) problems.push('identifier not found in listing A');
     if (!e.idB || !textOf(b).includes(squash(e.idB))) problems.push('identifier not found in listing B');
     if (e.idA && e.idB && alnum(e.idA) !== alnum(e.idB)) problems.push('identifiers differ');

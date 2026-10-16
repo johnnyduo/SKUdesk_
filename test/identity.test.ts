@@ -144,3 +144,16 @@ test('RAM sizes are not mistaken for storage', () => {
   const r = verifyEvidence(phone('Google Pixel 9 Pro 16GB RAM 256GB'), phone('Google Pixel 9 Pro 256GB unlocked'), { ...claimsIdentical('Pixel 9 Pro', 'Pixel 9 Pro'), evidence: { ...phoneEvidence('Pixel 9 Pro', 'Pixel 9 Pro'), brand: 'Google', brandQuoteA: 'Google', brandQuoteB: 'Google' } });
   assert.equal(r.verdict, 'identical');
 });
+
+test('a quote that is not the brand does not stand for the brand', () => {
+  const r = verifyEvidence({ id: 'a', title: 'LEGO Technic Ferrari Daytona SP3 42143', condition: 'new_sealed' }, { id: 'b', title: 'Ferrari Daytona Sp3 (42143) - Collectible Supercar Building Kit', condition: 'new_sealed' },
+    { verdict: 'identical', confidence: 1, reasons: [], mismatches: [], evidence: { brand: 'LEGO', brandQuoteA: 'LEGO', brandQuoteB: 'Ferrari', idA: '42143', idB: '42143' } });
+  assert.equal(r.verdict, 'uncertain');
+  assert.match(r.mismatches.join(' '), /do not name the brand/);
+});
+
+test('another script for the same brand is accepted as its name', () => {
+  const r = verifyEvidence({ id: 'a', title: 'レゴ アイコン コロッセオ 10276 新品未開封', condition: 'new_sealed' }, { id: 'b', title: 'LEGO Icons Colosseum 10276', condition: 'new_sealed' },
+    { verdict: 'identical', confidence: 1, reasons: [], mismatches: [], evidence: { brand: 'LEGO', brandQuoteA: 'レゴ', brandQuoteB: 'LEGO', idA: '10276', idB: '10276' } });
+  assert.equal(r.verdict, 'identical');
+});
