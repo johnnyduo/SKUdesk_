@@ -293,3 +293,13 @@ test('a long watchlist is scanned in turn: the watches that waited longest go fi
   assert.deepEqual(searched.splice(0), ['Phone One 128GB', 'Phone Two 128GB'], 'the third scan starts the list again');
   app.close();
 });
+
+test('prices recorded under older identity checks are not compared with current ones', async () => {
+  const { comparable } = await import('../src/domain.ts');
+  const { IDENTITY_VERSION } = await import('../src/identity.ts');
+  const pt = (t: string, v: number | undefined, cents: number) => ({ t, v, buyLandedCents: cents, lowestAskCents: null, identical: 1, considered: 5 });
+  const mixed = [pt('a', undefined, 114898), pt('b', IDENTITY_VERSION - 1, 100000), pt('c', IDENTITY_VERSION, 31497), pt('d', IDENTITY_VERSION, 31497)];
+  assert.deepEqual(comparable(mixed).map((p) => p.t), ['c', 'd']);
+  assert.deepEqual(comparable(mixed.slice(0, 2)).map((p) => p.t), ['a', 'b'], 'with nothing current, the old points are all there is');
+  assert.deepEqual(comparable([]), []);
+});

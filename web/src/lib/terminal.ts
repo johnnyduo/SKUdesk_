@@ -34,23 +34,31 @@ const ageText = (iso: string): string => {
   return `checked ${Math.floor(s / 86400)} d ago`;
 };
 
-function spark(values: (number | null)[], dir: string): SVGElement {
+// A small line of the last prices. With fewer than two prices there is no line to draw, so there is nothing drawn at all.
+const sparkPoints = (values: (number | null)[]): string | undefined => {
+  const v = values.filter((x): x is number => x !== null);
+  if (v.length < 2) return undefined;
+  const lo = Math.min(...v), hi = Math.max(...v), s = Math.max(hi - lo, 1);
+  return v.map((y, i) => `${1 + (i / (v.length - 1)) * 50},${18 - ((y - lo) / s) * 16}`).join(' ');
+};
+
+function spark(values: (number | null)[], dir: string): SVGElement | HTMLElement {
   const ns = 'http://www.w3.org/2000/svg';
   const v = values.filter((x): x is number => x !== null);
+  if (v.length < 2) return h('span', { class: 'mk-spark-blank', 'aria-hidden': 'true' });
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 52 20'); svg.setAttribute('width', '52'); svg.setAttribute('height', '20'); svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', v.length < 2 ? 'mk-spark mk-spark-none' : `mk-spark mk-spark-${dir}`);
+  svg.setAttribute('class', `mk-spark mk-spark-${dir}`);
   const pl = document.createElementNS(ns, 'polyline');
   pl.setAttribute('fill', 'none'); pl.setAttribute('stroke-width', '1.4');
-  if (v.length < 2) pl.setAttribute('points', '1,10 51,10');
-  else {
-    const lo = Math.min(...v), hi = Math.max(...v), s = Math.max(hi - lo, 1);
-    pl.setAttribute('points', v.map((y, i) => `${1 + (i / (v.length - 1)) * 50},${18 - ((y - lo) / s) * 16}`).join(' '));
-  }
+  const lo = Math.min(...v), hi = Math.max(...v), s = Math.max(hi - lo, 1);
+  pl.setAttribute('points', v.map((y, i) => `${1 + (i / (v.length - 1)) * 50},${18 - ((y - lo) / s) * 16}`).join(' '));
   svg.append(pl);
   return svg;
 }
 
+// What to print where a change would go: the change over the checks, or how many checks there are when one is too few.
+const changeText = (series: any[]): string => { const n = series.filter((p) => p.buyLandedCents !== null).length; const ch = changeOf(series); return ch ? pctStr(ch.pct) : n === 1 ? '1 check' : '-'; };
 const changeOf = (series: any[]): { pct: number; span: number } | null => {
   const s = series.filter((p) => p.buyLandedCents !== null);
   if (s.length < 2) return null;
@@ -150,7 +158,7 @@ export function mountTerminal(root: HTMLElement): void {
     el.list.replaceChildren(...(rows.length ? rows.map((r) => {
       const ch = changeOf(r.series);
       const dir = ch ? dirOf(ch.pct) : 'flat';
-      return mkRow(r.key, code(r.query), r.query, r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', ch ? pctStr(ch.pct) : '-', r.series.map((p: any) => p.buyLandedCents), dir, r.key === selKey && !selDevice, () => selectProduct(r.key));
+      return mkRow(r.key, code(r.query), r.query, r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', changeText(r.series), r.series.map((p: any) => p.buyLandedCents), dir, r.key === selKey && !selDevice, () => selectProduct(r.key));
     }) : [h('p', { class: 'mk-none' }, 'No products yet. Run a check on the desk.')]));
     const todo = unchecked();
     el.devHead.hidden = el.devices.hidden = todo.length === 0;
@@ -197,7 +205,7 @@ export function mountTerminal(root: HTMLElement): void {
   const curId = (): string => (selDevice ? selDevice.symbol : selKey);
   function paintPicker(): void {
     const items: PickItem[] = [
-      ...rows.map((r): PickItem => { const ch = changeOf(r.series); return { id: r.key, symbol: code(r.query), name: r.query, sub: `${r.market.toUpperCase()} · ${r.identical}/${r.considered} identical`, price: r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', change: ch ? pctStr(ch.pct) : '-', dir: ch ? dirOf(ch.pct) : 'flat', group: 'Checked products' }; }),
+      ...rows.map((r): PickItem => { const ch = changeOf(r.series); return { id: r.key, symbol: code(r.query), name: r.query, sub: `${r.market.toUpperCase()} · ${r.identical}/${r.considered} identical`, price: r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', change: changeText(r.series), dir: ch ? dirOf(ch.pct) : 'flat', group: 'Checked products', spark: sparkPoints(r.series.map((p: any) => p.buyLandedCents)) }; }),
       ...unchecked().map((d): PickItem => ({ id: d.symbol, symbol: d.symbol, name: d.name, sub: d.category, price: 'not checked', change: '-', dir: 'flat', group: 'Not checked yet' })),
     ];
     picker.set(items, curId());

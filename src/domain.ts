@@ -1,3 +1,4 @@
+import { IDENTITY_VERSION } from './identity.ts';
 import { createHash } from 'node:crypto';
 import type { Store } from './store.ts';
 import type { Analysis } from './types.ts';
@@ -75,6 +76,8 @@ export async function logEvent(store: Store, kind: EventRow['kind'], title: stri
 }
 
 export interface HistoryPoint {
+  // The identity checks in force when the point was recorded. Prices found under different checks are not comparable.
+  v?: number;
   t: string;
   buyLandedCents: number | null;
   lowestAskCents: number | null;
@@ -82,13 +85,19 @@ export interface HistoryPoint {
   considered: number;
 }
 
+/** The points that can be compared with each other: those recorded under the current identity checks, or all of them if none were. */
+export const comparable = (points: HistoryPoint[]): HistoryPoint[] => {
+  const now = points.filter((p) => p.v === IDENTITY_VERSION);
+  return now.length ? now : points;
+};
+
 export const productKey = (query: string, market: string): string => createHash('sha1').update(`${query.trim().toLowerCase()}|${market}`).digest('hex').slice(0, 14);
 
 export async function recordHistory(store: Store, a: Analysis): Promise<void> {
   const id = productKey(a.query, a.market);
   const prev = await store.get<{ query: string; market: string; currency: string; createdAt: string; points: HistoryPoint[] }>('history', id);
   const point: HistoryPoint = {
-    t: a.createdAt, buyLandedCents: a.buy?.landedCents ?? null, lowestAskCents: a.sell?.listAtCents ?? null,
+    v: IDENTITY_VERSION, t: a.createdAt, buyLandedCents: a.buy?.landedCents ?? null, lowestAskCents: a.sell?.listAtCents ?? null,
     identical: a.gate.identical, considered: a.gate.considered,
   };
   const points = [...(prev?.points ?? []), point].slice(-60);

@@ -146,6 +146,7 @@ describe('the site, end to end', () => {
       const all = await page.locator('.mk-pk-o').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.id!));
       await page.locator('[data-testid=product-picker]').click();
       assert.ok(all.length >= 10, 'checked products, one with no identical offer, and the unchecked previews');
+      assert.equal(await page.locator('.mk-spark-none').count(), 0, 'no placeholder lines where there is nothing to draw');
       for (const id of all) {
         await page.locator('[data-testid=product-picker]').click();
         await page.locator(`.mk-pk-o[data-id="${id}"]`).click();

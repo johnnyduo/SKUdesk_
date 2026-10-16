@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { analyze, DEFAULT_ASSUMPTIONS, type AgentDeps } from './agent.ts';
 import { arbitrage } from './economics.ts';
-import { MAX_WATCHES, addWatch, getLimits, listWatches, logEvent, parseLimitsPatch, productKey, setLimits, type EventRow, type HistoryPoint, type Watch } from './domain.ts';
+import { MAX_WATCHES, addWatch, comparable, getLimits, listWatches, logEvent, parseLimitsPatch, productKey, setLimits, type EventRow, type HistoryPoint, type Watch } from './domain.ts';
 import { clientIp, imageUrlOk, isOwner, RateLimiter, safeEq, SECURITY_HEADERS } from './security.ts';
 import { MARKETS } from './serpapi.ts';
 import { loadSite, serveStatic } from './static.ts';
@@ -207,7 +207,7 @@ export function createApp(deps: AppDeps): Server {
           const key = productKey(a.query, a.market);
           const h = await deps.store.get<{ points: HistoryPoint[] }>('history', key);
           const s = summary(a);
-          return { key, ...s, thumbnail: s.thumbnail ?? thumbs.get(key) ?? null, series: (h?.points ?? []).slice(-30) };
+          return { key, ...s, thumbnail: s.thumbnail ?? thumbs.get(key) ?? null, series: comparable(h?.points ?? []).slice(-30) };
         }));
         return send(res, 200, rows);
       }
@@ -231,7 +231,7 @@ export function createApp(deps: AppDeps): Server {
         const latest = latestPerProduct(await deps.store.list<Analysis>('analyses', 300)).find((a) => productKey(a.query, a.market) === lot[1]);
         if (!latest) return send(res, 404, { error: 'not found' });
         const h = await deps.store.get<{ points: HistoryPoint[] }>('history', lot[1]);
-        return send(res, 200, { analysis: latest, series: h?.points ?? [] });
+        return send(res, 200, { analysis: latest, series: comparable(h?.points ?? []) });
       }
 
       if (req.method === 'GET' && path === '/api/img') {

@@ -7,12 +7,13 @@ export interface PickItem { id: string; symbol: string; name: string; sub: strin
 export interface Picker { el: HTMLElement; set(items: PickItem[], selected: string): void }
 
 const ns = 'http://www.w3.org/2000/svg';
-function sparkEl(points: string | undefined, dir: string): SVGElement {
+function sparkEl(points: string | undefined, dir: string): SVGElement | HTMLElement {
+  if (!points) return h('span', { class: 'mk-spark-blank', 'aria-hidden': 'true' });
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 52 20'); svg.setAttribute('width', '52'); svg.setAttribute('height', '20'); svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', points ? `mk-spark mk-spark-${dir}` : 'mk-spark mk-spark-none');
+  svg.setAttribute('class', `mk-spark mk-spark-${dir}`);
   const pl = document.createElementNS(ns, 'polyline');
-  pl.setAttribute('fill', 'none'); pl.setAttribute('stroke-width', '1.4'); pl.setAttribute('points', points ?? '1,10 51,10');
+  pl.setAttribute('fill', 'none'); pl.setAttribute('stroke-width', '1.4'); pl.setAttribute('points', points);
   svg.append(pl);
   return svg;
 }
