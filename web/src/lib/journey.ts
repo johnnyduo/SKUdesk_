@@ -7,8 +7,8 @@ export const JOURNEY: JourneyStep[] = [
   { n: 2, href: '/show/', label: 'Agent decision', blurb: 'Watch the agent work through one real check, step by step.', matches: ['/show'] },
   { n: 3, href: '/market/', label: 'Offer market', blurb: 'Every product the agent tracks, with the ladder of identical offers and its price history.', matches: ['/market'] },
   { n: 4, href: '/app/create/', label: 'Deploy agent', blurb: 'Put a product on the watchlist so the agent checks it every day.', matches: ['/app/create'] },
-  { n: 5, href: '/app/agent/', label: 'Limits', blurb: 'What the agent may do, the owner’s limits and the kill switch.', matches: ['/app/agent', '/app/policies', '/app/owner'],
-    tabs: [['/app/agent/', 'Agent'], ['/app/policies/', 'Limits'], ['/app/owner/', 'Owner console']] },
+  { n: 5, href: '/app/agent/', label: 'Limits', blurb: 'What the agent may do, the owner’s limits and the kill switch.', matches: ['/app/agent', '/app/policies', '/app/owner', '/app/listings'],
+    tabs: [['/app/agent/', 'Agent'], ['/app/policies/', 'Limits'], ['/app/listings/', 'Resale listings'], ['/app/owner/', 'Owner console']] },
   { n: 6, href: '/app/analytics/', label: 'Proof', blurb: 'Run metrics, the evaluation results and what the service depends on.', matches: ['/app/analytics', '/app/deploy', '/app/integrations'],
     tabs: [['/app/analytics/', 'Run metrics'], ['/app/deploy/', 'Deployment'], ['/app/integrations/', 'Dependencies']] },
 ];

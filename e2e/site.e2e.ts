@@ -4,6 +4,8 @@ import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import { deflateSync } from 'node:zlib';
+import { generateKeyPairSync } from 'node:crypto';
+import { merchantConfigFrom } from '../src/merchant.ts';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { createApp } from '../src/app.ts';
 import { getLimits } from '../src/domain.ts';
@@ -30,6 +32,22 @@ const PICTURES: Record<string, Buffer> = {
   'box.png': png(160, 160, (x, y) => [20 + x / 2, 30 + y / 3, 60]),
 };
 const realFetch = globalThis.fetch;
+
+// Google's side of the Merchant Center connection, answered locally: sign-in, the account, insert, the processed product and delete.
+const SA_KEY = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' });
+const merchantEnv: Record<string, string> = { GOOGLE_SA_JSON: JSON.stringify({ client_email: 'agent@demo.iam.gserviceaccount.com', private_key: SA_KEY }), MERCHANT_ACCOUNT_ID: '4242', MERCHANT_DATA_SOURCE_ID: '31337' };
+const merchantCalls: string[] = [];
+const googleStub = (async (input: any, init: any) => {
+  const u = new URL(typeof input === 'string' ? input : input.href ?? input.url);
+  merchantCalls.push(`${init?.method ?? 'GET'} ${u.pathname}`);
+  const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
+  if (u.pathname === '/token') return json({ access_token: 'e2e-token', expires_in: 3600 });
+  if (u.pathname === '/accounts/v1/accounts/4242') return json({ accountName: 'E2E Store' });
+  if (u.pathname.endsWith('productInputs:insert')) return json({ name: 'accounts/4242/productInputs/x' });
+  if (init?.method === 'DELETE') return json({});
+  if (u.pathname.includes('/products/v1/accounts/4242/products/')) return json({ productStatus: { destinationStatuses: [{ approvedCountries: ['US'], disapprovedCountries: [] }], itemLevelIssues: [] } });
+  return json({}, 404);
+}) as typeof fetch;
 const THUMB = 'https://encrypted-tbn0.gstatic.com/images?q=';
 const OFFERS = [
   offer('LEGO.com', 'LEGO 10294 Titanic', 67999),
@@ -53,7 +71,7 @@ before(async () => {
   }) as typeof fetch;
   const store = new MemoryStore();
   server = createApp({
-    store, quota: new Quota(store, 50), readPerMin: 100000, analyzePerMin: 1000, scanSecret: 'scan', ownerKey: OWNER, watchlist: [], sources: { serpapi: true, ebay: false }, storeKind: 'memory',
+    store, quota: new Quota(store, 50), readPerMin: 100000, analyzePerMin: 1000, scanSecret: 'scan', ownerKey: OWNER, merchant: { config: merchantConfigFrom((k) => merchantEnv[k]), fetch: googleStub, sleep: async () => {} }, watchlist: [], sources: { serpapi: true, ebay: false }, storeKind: 'memory',
     agent: {
       store, model: 'stub',
       search: async (q: string) => ({ offers: /boxed/i.test(q) ? BOXED : OFFERS, fromCache: false }),
@@ -94,7 +112,7 @@ const runCheck = async (page: Page, query = 'LEGO 10294 Titanic') => {
 
 describe('the site, end to end', () => {
   test('every page loads without a script error', async () => {
-    const paths = ['/', '/app/', '/app/opportunities/', '/app/lots/', '/app/transactions/', '/app/radar/', '/app/orders/', '/show/', '/market/', '/app/create/', '/app/agent/', '/app/policies/', '/app/owner/', '/app/analytics/', '/app/deploy/', '/app/integrations/', '/deck/'];
+    const paths = ['/', '/app/', '/app/opportunities/', '/app/lots/', '/app/transactions/', '/app/radar/', '/app/orders/', '/show/', '/market/', '/app/create/', '/app/agent/', '/app/policies/', '/app/listings/', '/app/owner/', '/app/analytics/', '/app/deploy/', '/app/integrations/', '/deck/'];
     for (const p of paths) {
       const { page, errors } = await open(p);
       assert.ok((await page.locator('h1').first().textContent())?.trim(), `${p} has a heading`);
@@ -105,7 +123,7 @@ describe('the site, end to end', () => {
 
   test('no page scrolls sideways on a phone', async () => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 800 } });
-    for (const p of ['/', '/app/', '/app/opportunities/', '/app/lots/', '/market/', '/show/', '/app/policies/', '/app/owner/', '/app/deploy/']) {
+    for (const p of ['/', '/app/', '/app/opportunities/', '/app/lots/', '/market/', '/show/', '/app/policies/', '/app/listings/', '/app/owner/', '/app/deploy/']) {
       const { page } = await open(p, ctx);
       const wide = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
       assert.equal(wide, false, `${p} overflows at 390px`);
@@ -384,6 +402,47 @@ describe('the site, end to end', () => {
     await page.locator('.mk-bid.fresh').first().waitFor({ state: 'attached', timeout: 1000 }).catch(() => {});
     // restore
     await fetch(`${base}/api/limits`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-skudesk-owner': OWNER }, body: JSON.stringify({ minMarginBps: 1000 }) });
+    assert.deepEqual(errors, []);
+    await page.context().close();
+  });
+  test('resale listings: preview, send to Merchant Center, status follows Google, the product page is public, remove', async () => {
+    const a = await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'LEGO 10294 Titanic', market: 'us' }) })).json();
+    const { page, errors } = await open('/app/listings/');
+    await page.waitForFunction(() => /connected/.test(document.getElementById('mstate')?.textContent ?? ''), null, { timeout: 10000 });
+    assert.match(await page.locator('#merchant').textContent() ?? '', /E2E Store/);
+    assert.equal(await page.locator('#preview').isDisabled(), true, 'locked until the owner key is entered');
+    await page.click('#ok-summary');
+    await page.fill('#ok-input', OWNER);
+    await page.click('#ok-form button[type=submit]');
+    await page.waitForFunction(() => /unlocked/.test(document.getElementById('ok-label')?.textContent ?? ''));
+    // nothing to list until a person has approved the buy
+    await fetch(`${base}/api/proposals/${a.proposalId}/decision`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-skudesk-owner': OWNER }, body: JSON.stringify({ decision: 'approved' }) });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForFunction(() => !(document.getElementById('preview') as HTMLButtonElement).disabled, null, { timeout: 10000 });
+    assert.equal(await page.locator('#publish').isDisabled(), true, 'sending needs a preview first');
+    await page.click('#preview');
+    await page.waitForSelector('#preview-out table');
+    assert.match(await page.locator('#preview-out').textContent() ?? '', /Price.*\$679\.99/s);
+    assert.equal(merchantCalls.filter((c) => c.endsWith('productInputs:insert')).length, 0, 'a preview sends nothing');
+    await page.click('#publish');
+    await page.waitForSelector('#listings .row');
+    assert.equal(merchantCalls.filter((c) => c.endsWith('productInputs:insert')).length, 1);
+    const offer = (await page.locator('#listings .row').getAttribute('data-offer'))!;
+    // a first read asks Google, which has approved it
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('#listings .row');
+    assert.equal(merchantCalls.filter((c) => c.endsWith('productInputs:insert')).length, 1, 'reloading does not send again');
+    const row = await (await fetch(`${base}/api/merchant/listing/${offer}`)).json();
+    assert.equal(row.status, 'APPROVED');
+    // the product page Google reads
+    const product = await open(`/p/${offer}/`);
+    assert.match(await product.page.locator('h1').textContent() ?? '', /LEGO/i);
+    assert.match(await product.page.locator('.price').textContent() ?? '', /\$679\.99/);
+    assert.match(await product.page.locator('script[type="application/ld+json"]').textContent() ?? '', /"price":"679.99"/);
+    assert.equal(await product.page.locator('.img img').getAttribute('src'), `/p/${offer}/image`);
+    await product.page.context().close();
+    await fetch(`${base}/api/merchant/listing/${offer}`, { method: 'DELETE', headers: { 'x-skudesk-owner': OWNER } });
+    assert.equal((await fetch(`${base}/p/${offer}/`)).status, 404);
     assert.deepEqual(errors, []);
     await page.context().close();
   });

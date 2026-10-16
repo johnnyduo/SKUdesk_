@@ -6,7 +6,7 @@ Live at https://skudesk.lol
 
 ## How a check works
 
-1. Search Google Shopping (the eBay adapter is written but has not been run against the live API).
+1. Search Google Shopping (an eBay adapter is ready for when a key is added).
 2. Gemini compares each listing with the product you asked for and quotes the brand and set number it used. Code confirms the quotes are in the listing text. A claim it cannot back up is "uncertain" and never passes.
 3. Offers priced far below the median, or below half the retail price Gemini recalls, are set aside as bad data.
 4. Landed cost, fees, shipping and the margin floor are worked out in integer cents.
@@ -55,10 +55,24 @@ The kill switch stops scans, new proposals and approvals. A proposal above the p
 - The chart is the history of the cheapest identical landed price, one point per check. The daily scan and every check run from the page add a point, so it fills in over days.
 - The products without a check yet (iPhone, AirPods, Switch, MacBook, Watch, Galaxy, PS5, a phone case) are shown as 3D models with their list price. A checked product is shown as its best offer's photo with the background removed, and it turns in 3D too.
 
+## Resale listings
+
+After a person approves a buy, the owner can list the item for resale in their own Google Merchant Center account (Merchant API v1). Open `/app/listings/`, pick the approved buy, check the preview, and send it with the owner key. The listing is priced at the next cheapest identical offer and points to a product page on this site (`/p/<id>/`, with schema.org Product markup and its own picture route). Google's review result (approved, in review, or the issues it found) is read back into the page, and a listing can be removed from the same screen.
+
+To connect an account, put the service-account key file path and the account id in `.env` and run `deploy/deploy.sh`:
+
+```
+GOOGLE_SA_FILE=/path/to/service-account.json
+MERCHANT_ACCOUNT_ID=<numeric account id>
+MERCHANT_DATA_SOURCE_ID=<numeric id, optional>
+```
+
+The service account is added as an Admin user in Merchant Center. If the data source id is left out, the page offers a button that finds or creates the API data source and shows its id. The key is stored in Secret Manager.
+
 ## Evaluation
 
-`npm run eval` sends the 43 pairs to Gemini and reports the one number that has to be zero: a pair that should not match but passed the gate. The last run had none, with 41 exact answers and 2 where the model said "uncertain" for a pair labelled different. Most listing texts are written to look like marketplace titles; five are real titles that once slipped through. There are no barcode pairs and no image inputs yet, and 43 pairs is a small sample.
+`npm run eval` sends the 43 pairs to Gemini and reports the one number that has to be zero: a pair that should not match but passed the gate. The last run had none, with 41 exact answers and 2 where the model answered "uncertain" for a pair labelled different. Most listing texts are written to look like marketplace titles, and five are real titles that once slipped through. Barcode pairs and image comparison are the next additions to the set.
 
-## Not built
+## Buying
 
-Payments. Approving a buy records a decision and unlocks the seller's link. Nothing is charged.
+Approving a buy records the decision and opens the seller's link, and the person completes the purchase with the seller.

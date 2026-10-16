@@ -5,6 +5,8 @@ import { addWatch, getLimits, listWatches, logEvent, parseLimitsPatch, productKe
 import { clientIp, imageUrlOk, isOwner, RateLimiter, safeEq, SECURITY_HEADERS } from './security.ts';
 import { MARKETS } from './serpapi.ts';
 import { loadSite, serveStatic } from './static.ts';
+import { createMerchantRoutes, type MerchantDeps } from './merchant-routes.ts';
+import { merchantConfigFrom } from './merchant.ts';
 import { hashKey, QuotaExceeded, type Quota, type Store } from './store.ts';
 import type { Analysis, Proposal } from './types.ts';
 
@@ -19,6 +21,7 @@ export interface AppDeps {
   sources: { serpapi: boolean; ebay: boolean };
   storeKind: string;
   evalSummary?: unknown;
+  merchant?: MerchantDeps;
   siteDir?: string;
   scanMax?: number;
   analyzePerMin?: number;
@@ -104,6 +107,24 @@ export function createApp(deps: AppDeps): Server {
   const readMin = new RateLimiter(deps.readPerMin ?? 240, 60_000);
   const ownerMin = new RateLimiter(20, 60_000);
   const imgCache = new Map<string, { type: string; body: Buffer }>();
+  const loadImage = async (raw: string): Promise<{ type: string; body: Buffer } | null> => {
+    const target = imageUrlOk(raw);
+    if (!target) return null;
+    const key = target.toString();
+    let hit = imgCache.get(key);
+    if (!hit) {
+      const up = await fetch(target, { signal: AbortSignal.timeout(5000), redirect: 'error' }).catch(() => null);
+      const type = up?.headers.get('content-type') ?? '';
+      if (!up?.ok || !/^image\/(png|jpe?g|webp|gif)/.test(type)) return null;
+      const body = Buffer.from(await up.arrayBuffer());
+      if (body.length > 1_500_000) return null;
+      hit = { type, body };
+      if (imgCache.size >= 300) imgCache.delete(imgCache.keys().next().value as string);
+      imgCache.set(key, hit);
+    }
+    return hit;
+  };
+  const merchant = createMerchantRoutes(deps.merchant ?? { config: merchantConfigFrom(() => undefined) }, { store: deps.store, send, readJson, image: loadImage });
   let running = 0;
   const maxRunning = deps.maxConcurrent ?? 3;
 
@@ -121,6 +142,11 @@ export function createApp(deps: AppDeps): Server {
       const ip = clientIp(req, edgeSecret);
       const owner = isOwner(req, ownerKey);
 
+      if (path.startsWith('/api/merchant') && req.method === 'GET' && readMin.hit(`r:${ip}`)) return send(res, 429, { error: 'Too many requests.' });
+      if (path.startsWith('/p/') || path.startsWith('/api/merchant')) {
+        if (req.method !== 'GET' && ownerMin.hit(`o:${ip}`)) return send(res, 429, { error: 'Too many requests.' });
+        if (await merchant.handle(req, res, path, owner)) return;
+      }
       if (!path.startsWith('/api/') && path !== '/health' && serveStatic(site, req, res, path)) return;
       if (req.method === 'GET' && path === '/health') return send(res, 200, { ok: true });
       if (path.startsWith('/api/') && req.method === 'GET' && readMin.hit(`r:${ip}`)) return send(res, 429, { error: 'Too many requests.' });
@@ -181,18 +207,8 @@ export function createApp(deps: AppDeps): Server {
         if (imgMin.hit(`i:${ip}`)) return send(res, 429, { error: 'Too many requests.' });
         const target = imageUrlOk(url.searchParams.get('u') ?? '');
         if (!target) return send(res, 400, { error: 'image not allowed' });
-        const key = target.toString();
-        let hit = imgCache.get(key);
-        if (!hit) {
-          const up = await fetch(target, { signal: AbortSignal.timeout(5000), redirect: 'error' }).catch(() => null);
-          const type = up?.headers.get('content-type') ?? '';
-          if (!up?.ok || !/^image\/(png|jpe?g|webp|gif)/.test(type)) return send(res, 502, { error: 'image unavailable' });
-          const body = Buffer.from(await up.arrayBuffer());
-          if (body.length > 1_500_000) return send(res, 502, { error: 'image too large' });
-          hit = { type, body };
-          if (imgCache.size >= 300) imgCache.delete(imgCache.keys().next().value as string);
-          imgCache.set(key, hit);
-        }
+        const hit = await loadImage(target.toString());
+        if (!hit) return send(res, 502, { error: 'image unavailable' });
         res.writeHead(200, { 'content-type': hit.type, 'cache-control': 'public, max-age=86400', ...SECURITY_HEADERS });
         return void res.end(hit.body);
       }

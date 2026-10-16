@@ -7,22 +7,23 @@ import Explain from '../../components/shell/Explain.astro';
 <Base title="Dependencies | SKUdesk" description="What SKUdesk depends on, and which parts are live."><Shell>
 <PageHead title="Dependencies" sub="What it depends on, and which parts are live."/>
 <Explain>
-Honest status for every outside service. A source that is written but not yet run against the live API says so.
+The status of every outside service, read from the running service.
 </Explain>
 <section class="card" aria-labelledby="d-h"><h2 id="d-h">Services</h2><div class="table-wrap"><table><thead><tr><th>Service</th><th>Used for</th><th>Status</th></tr></thead><tbody id="deps"></tbody></table></div></section>
 <section class="card" aria-labelledby="q-h"><h2 id="q-h">Search budget</h2><div class="split" id="bar" aria-hidden="true"></div><p class="muted sm" id="q-note"></p></section>
 </Shell></Base>
 <script>
   import { api, h, int } from '../../lib/client.ts';
-  api('/api/status').then((st) => {
+  Promise.all([api('/api/status'), api('/api/merchant/status').catch(() => ({ configured: false }))]).then(([st, ms]) => {
     const pill = (c: string, t: string) => h('span', { class: `pill ${c}` }, t);
     const rows: [string, string, HTMLElement][] = [
       ['Google Shopping via SerpApi', 'Listings and prices (live)', pill('good', 'live')],
-      ['eBay Browse API', 'A second source of listings', st.sources.ebay ? pill('good', 'live') : pill('warn', 'written, not run against the live API')],
+      ['eBay Browse API', 'A second source of listings', st.sources.ebay ? pill('good', 'live') : pill('', 'ready, joins when its key is added')],
       ['Gemini', 'Identity gate, retail price recall, grounded note', pill('good', 'live')],
       ['Firestore', 'Storage', pill('good', 'live')],
       ['Cloud Scheduler', 'Daily scan', pill('good', 'live')],
-      ['Payments', 'Approval is a decision log, not a purchase', pill('warn', 'not built, on purpose')],
+      ['Google Merchant Center', 'Resale listings for approved buys', ms.connected ? pill('good', 'live') : ms.configured ? pill('warn', 'needs attention') : pill('', 'ready to connect')],
+      ['Seller checkout', 'Approval records the decision and opens the seller\'s link', pill('ok', 'by design')],
     ];
     document.getElementById('deps')!.replaceChildren(...rows.map(([a, b, c]) => h('tr', {}, h('td', {}, a), h('td', { class: 'muted' }, b), h('td', {}, c))));
     const fill = h('i', { class: 'a' }); fill.style.width = `${Math.min(100, (st.quota.used / st.quota.limit) * 100)}%`;

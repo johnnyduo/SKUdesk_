@@ -3,6 +3,7 @@ import { createIdentityEngine } from './identity.ts';
 import { geminiGenerate } from './gemini.ts';
 import { MARKETS, searchShopping } from './serpapi.ts';
 import { searchEbay } from './ebay.ts';
+import { merchantConfigFrom } from './merchant.ts';
 import { estimateRetail } from './retail.ts';
 import { briefingFor } from './briefing.ts';
 import { getLimits } from './domain.ts';
@@ -44,6 +45,7 @@ try {
 
 const app = createApp({
   evalSummary,
+  merchant: { config: merchantConfigFrom(env) },
   store, quota, watchlist,
   storeKind: useFirestore ? `firestore:${database}` : 'local file',
   scanSecret: env('SCAN_SECRET') ?? '',

@@ -1,0 +1,129 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/shell/Shell.astro';
+import PageHead from '../../components/shell/PageHead.astro';
+import Explain from '../../components/shell/Explain.astro';
+---
+<Base title="Resale listings | SKUdesk" description="List an approved buy for resale in your Google Merchant Center account."><Shell>
+<PageHead title="Resale listings" sub="Approved buys, listed for resale in your Merchant Center."><span slot="badge" class="pill" id="mstate">…</span></PageHead>
+<Explain>
+After a person approves a buy, the owner can list it for resale in their own <b>Google Merchant Center</b> account. The listing is priced at the next cheapest identical offer, points to a product page on this site, and is <b>previewed before it is sent</b>. Sending needs the owner key. Google then reviews it, and the status here follows its answer.
+</Explain>
+<section class="card" aria-labelledby="ms-h"><h2 id="ms-h">Merchant Center</h2><div id="merchant"><p class="muted">Loading…</p></div></section>
+<section class="card" aria-labelledby="new-h"><h2 id="new-h">List a resale</h2>
+<p class="muted sm" id="lock-msg">Unlock owner mode (top right) with the owner key to list.</p>
+<form id="form" class="stack-sm" autocomplete="off">
+<div class="grid2 start">
+<label class="field"><span>Approved buy</span><select id="proposal" disabled></select></label>
+<label class="field"><span>List price (USD)</span><input id="price" inputmode="decimal" placeholder="the next cheapest identical price" disabled></label>
+</div>
+<div class="actions"><button class="btn" type="submit" id="preview" disabled>Preview</button><button class="btn" type="button" id="publish" disabled>Send to Merchant Center</button></div>
+</form>
+<div id="preview-out" aria-live="polite"></div>
+<p class="note" id="msg" role="status"></p></section>
+<section class="card" aria-labelledby="ls-h"><h2 id="ls-h">Listings</h2><div id="listings"><p class="muted">Loading…</p></div></section>
+</Shell></Base>
+<script>
+  import { $, api, h, money, postJson } from '../../lib/client.ts';
+  const owner = () => document.documentElement.classList.contains('is-owner');
+  const STATUS_CLASS: Record<string, string> = { APPROVED: 'good', DISAPPROVED: 'bad', SUBMITTED: 'warn', PROCESSING: 'warn', DRAFT: '', DELETED: '' };
+  let proposals: any[] = [];
+  let listings: any[] = [];
+  let ready = false;
+  let previewed = '';
+
+  async function loadMerchant() {
+    const s = await api('/api/merchant/status', { owner: true });
+    const box = $('merchant');
+    const st = $('mstate');
+    if (!s.configured) {
+      st.textContent = 'not connected'; st.className = 'pill';
+      box.replaceChildren(h('p', {}, 'Connect your Merchant Center account to list resales. Add ', h('code', {}, s.missing.join(', ')), ' to the service secrets and redeploy.'));
+      ready = false;
+      return;
+    }
+    if (!s.connected) {
+      st.textContent = 'needs attention'; st.className = 'pill bad';
+      box.replaceChildren(h('p', {}, s.error?.message ?? 'Merchant Center did not answer.'));
+      ready = false;
+      return;
+    }
+    st.textContent = 'connected'; st.className = 'pill good';
+    ready = Boolean(s.hasDataSource);
+    const rows: any[] = [h('tr', {}, h('td', {}, 'Account'), h('td', {}, s.accountName ?? 'Merchant Center account')), h('tr', {}, h('td', {}, 'Store'), h('td', {}, `${s.country} · USD`))];
+    if (s.accountId && owner()) rows.push(h('tr', {}, h('td', {}, 'Account id'), h('td', { class: 'mono' }, s.accountId)));
+    rows.push(h('tr', {}, h('td', {}, 'Data source'), h('td', {}, s.hasDataSource ? 'ready' : 'not set yet')));
+    box.replaceChildren(h('table', { class: 'kv' }, h('tbody', {}, rows)));
+    if (!s.hasDataSource) {
+      const b = h('button', { class: 'btn', type: 'button', disabled: !owner() }, 'Find or create the data source');
+      b.addEventListener('click', async () => {
+        try { const r = await postJson('/api/merchant/data-source', {}, { owner: true }); $('msg').textContent = `Data source ${r.dataSourceId} ${r.created ? 'created' : 'found'}. ${r.hint}`; } catch (e) { $('msg').textContent = (e as Error).message; }
+      });
+      box.append(b);
+    }
+  }
+
+  async function loadListings() {
+    listings = await api('/api/merchant/listings', { owner: true });
+    const listed = new Set(listings.map((l) => l.proposalId));
+    proposals = (await api('/api/proposals')).filter((p: any) => p.status === 'approved' && !listed.has(p.id));
+    const sel = $('proposal') as HTMLSelectElement;
+    sel.replaceChildren(...(proposals.length ? proposals.map((p: any) => h('option', { value: p.id }, `${p.query} · bought at ${money(p.landedCents, p.currency)}`)) : [h('option', { value: '' }, 'No approved buy waiting to be listed')]));
+    const box = $('listings');
+    if (!listings.length) { box.replaceChildren(h('p', { class: 'muted sm' }, 'Nothing listed yet.')); return; }
+    box.replaceChildren(h('div', { class: 'stack-sm' }, listings.map((l) => {
+      const del = h('button', { class: 'btn ghost', type: 'button', disabled: !owner() }, 'Remove');
+      del.addEventListener('click', async () => { try { await postJson(`/api/merchant/listing/${l.offerId}`, {}, { owner: true, method: 'DELETE' }); await loadListings(); } catch (e) { $('msg').textContent = (e as Error).message; } });
+      return h('div', { class: 'row', 'data-offer': l.offerId },
+        h('span', { class: `pill ${STATUS_CLASS[l.status] ?? ''}` }, l.status.toLowerCase()),
+        h('span', { class: 'grow' }, h('b', {}, l.title), ' ', h('span', { class: 'muted' }, money(l.priceCents)), l.issues?.length ? h('div', { class: 'muted xs' }, l.issues.map((i: any) => i.description).join(' · ')) : null),
+        h('a', { class: 'btn ghost', href: `/p/${l.offerId}/` }, 'Product page'), del);
+    })));
+  }
+
+  function lock() {
+    const on = owner() && ready && proposals.length > 0;
+    ($('proposal') as HTMLSelectElement).disabled = !on;
+    ($('price') as HTMLInputElement).disabled = !on;
+    ($('preview') as HTMLButtonElement).disabled = !on;
+    ($('publish') as HTMLButtonElement).disabled = !on || previewed !== key();
+    $('lock-msg').hidden = owner();
+  }
+  const key = () => `${($('proposal') as HTMLSelectElement).value}|${($('price') as HTMLInputElement).value.trim()}`;
+  const body = (dryRun: boolean) => {
+    const v = ($('price') as HTMLInputElement).value.trim();
+    const cents = v ? Math.round(parseFloat(v.replace(/[$,]/g, '')) * 100) : undefined;
+    return { proposalId: ($('proposal') as HTMLSelectElement).value, ...(cents ? { listPriceCents: cents } : {}), dryRun };
+  };
+
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const r = await postJson('/api/merchant/listing', body(true), { owner: true });
+      previewed = key();
+      const a = r.wouldSend.body.productAttributes;
+      $('preview-out').replaceChildren(h('table', { class: 'kv' }, h('tbody', {},
+        h('tr', {}, h('td', {}, 'Title'), h('td', {}, a.title)),
+        h('tr', {}, h('td', {}, 'Price'), h('td', {}, money(Math.round(Number(a.price.amountMicros) / 10000)))),
+        h('tr', {}, h('td', {}, 'Product page'), h('td', {}, h('a', { href: new URL(r.page).pathname }, r.page))),
+        h('tr', {}, h('td', {}, 'Ready to send'), h('td', {}, r.configured ? 'yes' : `not yet: ${r.missing.join(', ')}`)))));
+      $('msg').textContent = 'Preview only: nothing has been sent.';
+      lock();
+    } catch (err) { $('msg').textContent = (err as Error).message; }
+  });
+  $('publish').addEventListener('click', async () => {
+    try {
+      const r = await postJson('/api/merchant/listing', body(false), { owner: true });
+      $('msg').textContent = r.idempotent ? 'Already sent.' : 'Sent to Merchant Center. Google reviews it and the status below follows.';
+      previewed = ''; $('preview-out').replaceChildren();
+      await loadListings(); lock();
+    } catch (err) { $('msg').textContent = (err as Error).message; }
+  });
+  ($('proposal') as HTMLSelectElement).addEventListener('change', lock);
+  ($('price') as HTMLInputElement).addEventListener('input', lock);
+
+  async function boot() { await Promise.all([loadMerchant(), loadListings()]); lock(); }
+  void boot().catch(() => {});
+  addEventListener('skudesk:owner', () => void boot().catch(() => {}));
+  setTimeout(() => void boot().catch(() => {}), 700);
+</script>

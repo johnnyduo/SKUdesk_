@@ -39,14 +39,22 @@ if [ -n "${EBAY_CLIENT_ID:-}" ] && [ -n "${EBAY_CLIENT_SECRET:-}" ]; then
   put_secret skudesk-ebay-id "$EBAY_CLIENT_ID"; put_secret skudesk-ebay-secret "$EBAY_CLIENT_SECRET"
   EBAY_SECRETS=",EBAY_CLIENT_ID=skudesk-ebay-id:latest,EBAY_CLIENT_SECRET=skudesk-ebay-secret:latest"
 else EBAY_SECRETS=""; fi
+# Google Merchant Center: a service-account key file and the account id (the data source id once it exists).
+MERCHANT_ENV=""; MERCHANT_SECRETS=""
+if [ -n "${GOOGLE_SA_FILE:-}" ] && [ -n "${MERCHANT_ACCOUNT_ID:-}" ]; then
+  put_secret skudesk-google-sa "$(cat "$GOOGLE_SA_FILE")"
+  MERCHANT_SECRETS=",GOOGLE_SA_JSON=skudesk-google-sa:latest"
+  MERCHANT_ENV=",MERCHANT_ACCOUNT_ID=${MERCHANT_ACCOUNT_ID}"
+  [ -n "${MERCHANT_DATA_SOURCE_ID:-}" ] && MERCHANT_ENV="${MERCHANT_ENV},MERCHANT_DATA_SOURCE_ID=${MERCHANT_DATA_SOURCE_ID}"
+fi
 
 echo "== cloud run (built from source, no Dockerfile)"
 gcloud run deploy skudesk --source . --region "$REGION" --project "$P" \
   --service-account "$SA" --allow-unauthenticated \
   --min-instances 0 --max-instances 3 --cpu 1 --memory 512Mi --timeout 120 --concurrency 40 \
-  --set-env-vars "GCP_PROJECT=${P},FIRESTORE_DATABASE=${DB},GEMINI_MODEL=${GEMINI_MODEL},MONTHLY_SEARCH_CAP=${MONTHLY_SEARCH_CAP:-100},SCAN_MAX=${SCAN_MAX:-3}" \
+  --set-env-vars "GCP_PROJECT=${P},FIRESTORE_DATABASE=${DB},GEMINI_MODEL=${GEMINI_MODEL},MONTHLY_SEARCH_CAP=${MONTHLY_SEARCH_CAP:-100},SCAN_MAX=${SCAN_MAX:-3}${MERCHANT_ENV}" \
   --set-env-vars "^@^WATCHLIST=${WATCHLIST}" \
-  --set-secrets "GEMINI_API_KEY=skudesk-gemini-key:latest,SERPAPI_KEY=skudesk-serpapi-key:latest,SCAN_SECRET=skudesk-scan-secret:latest,OWNER_KEY=skudesk-owner-key:latest,EDGE_SECRET=skudesk-edge-secret:latest${EBAY_SECRETS}"
+  --set-secrets "GEMINI_API_KEY=skudesk-gemini-key:latest,SERPAPI_KEY=skudesk-serpapi-key:latest,SCAN_SECRET=skudesk-scan-secret:latest,OWNER_KEY=skudesk-owner-key:latest,EDGE_SECRET=skudesk-edge-secret:latest${EBAY_SECRETS}${MERCHANT_SECRETS}"
 URL="$(gcloud run services describe skudesk --region "$REGION" --project "$P" --format 'value(status.url)')"
 
 echo "== scheduler"
