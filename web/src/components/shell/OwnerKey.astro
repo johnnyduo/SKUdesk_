@@ -16,7 +16,8 @@
   const label = $('ok-label'), msg = $('ok-msg'), lock = $('ok-lock');
   const det = $('ownerkey') as HTMLDetailsElement;
   const paint = (on: boolean) => { label.textContent = on ? 'Owner: unlocked' : 'Owner: locked'; document.documentElement.classList.toggle('is-owner', on); lock.hidden = !on; $('ok-summary').classList.toggle('on', on); };
-  checkOwner().then(paint);
+  // Tell the page once the stored key has been checked, so pages never act on a stale locked state.
+  checkOwner().then((ok) => { paint(ok); dispatchEvent(new CustomEvent('skudesk:owner')); });
   $('ok-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = $('ok-input') as HTMLInputElement;

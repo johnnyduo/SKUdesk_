@@ -248,3 +248,9 @@ test('a few engine errors are noted but do not void the check', async () => {
   assert.equal(a.degraded, undefined);
   assert.ok(a.notes.some((x) => /could not be judged/.test(x)));
 });
+
+test('shipping defaults scale with the market so they stay realistic in a high-denomination currency', async () => {
+  const a = await analyze({ query: 'q', market: 'th' }, deps([offer('A', 'SET', 300000, { shippingCents: null })]));
+  assert.equal(a.assumptions.unknownShippingCents, 35000);
+  assert.equal(a.assumptions.outboundShippingCents, 52500);
+});

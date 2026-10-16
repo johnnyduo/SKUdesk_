@@ -7,11 +7,12 @@ export const MARKETS: Record<string, Market> = {
   de: { code: 'de', label: 'Germany', gl: 'de', hl: 'en', currency: 'EUR' },
   ca: { code: 'ca', label: 'Canada', gl: 'ca', hl: 'en', currency: 'CAD' },
   au: { code: 'au', label: 'Australia', gl: 'au', hl: 'en', currency: 'AUD' },
+  th: { code: 'th', label: 'Thailand', gl: 'th', hl: 'en', currency: 'THB', scale: 35 },
 };
 
 const SEARCH_TTL_MS = 12 * 60 * 60 * 1000;
 
-const MARKETPLACE = /^(ebay|mercari|etsy|poshmark|depop|stockx|whatnot|offerup|aliexpress|temu|walmart - |amazon - )/i;
+const MARKETPLACE = /^(ebay|mercari|etsy|poshmark|depop|stockx|whatnot|offerup|aliexpress|temu|lazada|shopee|walmart - |amazon - )/i;
 
 export const channelOf = (source: string): Channel => (MARKETPLACE.test(source.trim()) ? 'marketplace' : 'retailer');
 

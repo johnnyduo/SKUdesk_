@@ -28,7 +28,7 @@ let browser: Browser;
 before(async () => {
   const store = new MemoryStore();
   server = createApp({
-    store, quota: new Quota(store, 50), scanSecret: 'scan', ownerKey: OWNER, watchlist: [], sources: { serpapi: true, ebay: false }, storeKind: 'memory',
+    store, quota: new Quota(store, 50), readPerMin: 100000, analyzePerMin: 1000, scanSecret: 'scan', ownerKey: OWNER, watchlist: [], sources: { serpapi: true, ebay: false }, storeKind: 'memory',
     agent: {
       store, model: 'stub',
       search: async () => ({ offers: OFFERS, fromCache: false }),
@@ -142,11 +142,19 @@ describe('the site, end to end', () => {
     await lots.page.context().close();
 
     const market = await open('/market/');
-    await market.page.waitForSelector('#ladder .ladder');
-    assert.ok(await market.page.locator('#devices .mk-item').count() >= 6, 'reference devices are listed');
-    await market.page.locator('#devices .mk-item').first().click();
+    await market.page.waitForSelector('.mk-al .mk-ar');
+    await market.page.waitForSelector('.mk-bk');
+    assert.ok(await market.page.locator('.mk-bk.flag').count() >= 1, 'the bait price is flagged in the offer book');
+    assert.ok(await market.page.locator('.mk-bk.best').count() === 1, 'the best ask is marked');
+    assert.match(await market.page.locator('.mk-stats').textContent() ?? '', /Cheapest landed/);
+    await market.page.click('.mk-seg button:nth-child(2)');
+    assert.equal(await market.page.locator('.mk-seg button[aria-pressed=true]').textContent(), 'Daily candles');
+    await market.page.locator('.mk-ticket, .mk-tkt-a .mk-btn-pri').click();
+    await market.page.waitForSelector('.mk-tkt-ok', { timeout: 20000 });
+    assert.ok(await market.page.locator('.mk-al .mk-ar').count() >= 9, 'checked products plus reference products are listed');
+    await market.page.locator('.mk-al').nth(1).locator('.mk-ar').first().click();
     await market.page.waitForSelector('.p3d');
-    assert.equal(await market.page.locator('#ladder-card').isVisible(), false);
+    assert.match(await market.page.locator('.mk-stats').textContent() ?? '', /List price/);
     await market.page.context().close();
 
     const show = await open('/show/');
@@ -219,6 +227,7 @@ describe('the site, end to end', () => {
     assert.match(await page.locator('#result .v-sub').textContent() ?? '', /per-buy limit/);
     await page.fill('#max', '1500');
     await page.click('#save');
+    await page.waitForFunction(() => /Saved/.test(document.getElementById('msg')!.textContent ?? ''));
     await ctx.close();
   });
 

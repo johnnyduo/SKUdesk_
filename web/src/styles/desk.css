@@ -106,3 +106,4 @@ td .row{display:flex;align-items:center;gap:var(--s3);color:inherit;text-decorat
 @media(max-width:900px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
 
 [hidden]{display:none!important}
+

@@ -22,6 +22,7 @@ export interface AppDeps {
   siteDir?: string;
   scanMax?: number;
   analyzePerMin?: number;
+  readPerMin?: number;
   maxConcurrent?: number;
 }
 
@@ -99,7 +100,7 @@ export function createApp(deps: AppDeps): Server {
   const analyzeDay = new RateLimiter(60, 24 * 3_600_000);
   const decideMin = new RateLimiter(20, 60_000);
   const imgMin = new RateLimiter(240, 60_000);
-  const readMin = new RateLimiter(240, 60_000);
+  const readMin = new RateLimiter(deps.readPerMin ?? 240, 60_000);
   const ownerMin = new RateLimiter(20, 60_000);
   const imgCache = new Map<string, { type: string; body: Buffer }>();
   let running = 0;

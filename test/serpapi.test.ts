@@ -23,6 +23,8 @@ test('channelOf separates marketplaces from retailers', () => {
   assert.equal(channelOf('Walmart - StarGlow'), 'marketplace');
   assert.equal(channelOf('LEGO.com'), 'retailer');
   assert.equal(channelOf('Walmart'), 'retailer');
+  assert.equal(channelOf('Lazada Thailand'), 'marketplace');
+  assert.equal(channelOf('Shopee'), 'marketplace');
 });
 
 test('parseShopping turns the real fixture into integer-cent offers', () => {

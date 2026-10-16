@@ -24,6 +24,8 @@ export interface Market {
   gl: string;
   hl: string;
   currency: string;
+  // How many times larger the default shipping amounts are here than in a dollar market, so the defaults stay realistic.
+  scale?: number;
 }
 
 export interface Assumptions {

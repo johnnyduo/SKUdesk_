@@ -119,7 +119,12 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
   const market = MARKETS[req.market];
   if (!market) throw new Error(`unknown market ${req.market}`);
   const limits = await (deps.limits?.() ?? Promise.resolve(DEFAULT_LIMITS)).catch(() => DEFAULT_LIMITS);
-  const assumptions: Assumptions = { ...DEFAULT_ASSUMPTIONS, minMarginBps: limits.minMarginBps, ...req.assumptions };
+  const scale = market.scale ?? 1;
+  const assumptions: Assumptions = {
+    ...DEFAULT_ASSUMPTIONS, minMarginBps: limits.minMarginBps,
+    unknownShippingCents: DEFAULT_ASSUMPTIONS.unknownShippingCents * scale, outboundShippingCents: DEFAULT_ASSUMPTIONS.outboundShippingCents * scale,
+    ...req.assumptions,
+  };
   const now = (deps.now ?? (() => new Date()))();
   const query = req.query.trim();
 
