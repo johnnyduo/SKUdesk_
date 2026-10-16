@@ -165,7 +165,7 @@ export function mountTerminal(root: HTMLElement): void {
         h('div', { class: 'p3d-bot' }, h('div', { class: 'p3d-hint', 'aria-hidden': 'true' }, 'no photo yet'))));
       return;
     }
-    photo = createPhotoViewer(src, r ? code(r.query) : '', name, 'Sealed set');
+    photo = createPhotoViewer(src, r ? code(r.query) : '', name, 'New, sealed');
     el.p3d.replaceChildren(photo.el);
   }
 

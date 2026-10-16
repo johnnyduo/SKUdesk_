@@ -7,10 +7,11 @@ import Explain from '../../components/shell/Explain.astro';
 <Base title="Deployment | SKUdesk" description="How SKUdesk runs on Google Cloud, with live checks."><Shell>
 <PageHead title="Deployment" sub="How it runs on Google Cloud, with live checks."/>
 <Explain>
-SKUdesk is plain web: a Node service on <b>Cloud Run</b>, a <b>Firestore</b> database, a <b>Cloud Scheduler</b> job and <b>Secret Manager</b> for keys. The checks below run in your browser against this very service.
+A Node service on <b>Cloud Run</b>, a <b>Firestore</b> database, a <b>Cloud Scheduler</b> job and <b>Secret Manager</b> for keys, with <b>Gemini</b> reading each listing's text and photo. The state below is read from the running service when you open the page.
 </Explain>
-<section class="card" aria-labelledby="c-h"><h2 id="c-h">Live checks</h2><div class="table-wrap"><table><thead><tr><th>Part</th><th>Role</th><th>State</th></tr></thead><tbody id="parts"></tbody></table></div></section>
-<section class="card" aria-labelledby="s-h"><h2 id="s-h">Security posture (read from this page's own response)</h2><div class="table-wrap"><table><thead><tr><th>Header</th><th>Value</th></tr></thead><tbody id="sec"></tbody></table></div>
+<section class="card" aria-labelledby="c-h"><h2 id="c-h">Services</h2><div class="table-wrap"><table><thead><tr><th>Service</th><th>Used for</th><th>State</th></tr></thead><tbody id="parts"></tbody></table></div></section>
+<section class="card" aria-labelledby="q-h"><h2 id="q-h">Search budget</h2><div class="split" id="bar" aria-hidden="true"></div><p class="muted sm" id="q-note"></p></section>
+<section class="card" aria-labelledby="s-h"><h2 id="s-h">Security headers (read from this page's own response)</h2><div class="table-wrap"><table><thead><tr><th>Header</th><th>Value</th></tr></thead><tbody id="sec"></tbody></table></div>
 <ul class="steps-list">
 <li>Scripts only from this origin; no inline script runs. Listing text is untrusted and only ever set as text.</li>
 <li>Product images pass through an allow-listed proxy, so the page cannot be used as an open proxy.</li>
@@ -20,18 +21,26 @@ SKUdesk is plain web: a Node service on <b>Cloud Run</b>, a <b>Firestore</b> dat
 </ul></section>
 </Shell></Base>
 <script>
-  import { api, h, when } from '../../lib/client.ts';
-  const state = (ok: boolean | null, text: string) => h('span', { class: `pill ${ok === null ? 'warn' : ok ? 'good' : 'bad'}` }, text);
-  Promise.all([api('/health').then(() => true).catch(() => false), api('/api/status'), api('/api/scans').catch(() => []), fetch('/', { method: 'HEAD' })]).then(([healthy, st, scans, page]) => {
+  import { api, h, int, when } from '../../lib/client.ts';
+  const pill = (c: string, t: string) => h('span', { class: `pill ${c}` }, t);
+  Promise.all([api('/health').then(() => true).catch(() => false), api('/api/status'), api('/api/scans').catch(() => []), api('/api/merchant/status').catch(() => ({ configured: false })), fetch('/', { method: 'HEAD' })]).then(([healthy, st, scans, ms, page]) => {
     const last = scans[0]?.createdAt;
+    const fs = String(st.store).startsWith('firestore');
     const rows: [string, string, HTMLElement][] = [
-      ['Cloud Run', 'API and the site, deployed from source', state(healthy, healthy ? 'live' : 'down')],
-      ['Firestore', 'Cache, checks, proposals, history, audit log', state(String(st.store).startsWith('firestore'), String(st.store).startsWith('firestore') ? 'live' : 'local file')],
-      ['Cloud Scheduler', 'Daily scan of the watchlist', state(last ? true : null, last ? `last scan ${when(last)}` : 'no scan yet')],
-      ['Secret Manager', 'Gemini, SerpApi, owner and scan keys', state(true, 'in use')],
-      ['Gemini', 'Identity gate, retail recall, grounded note', state(true, 'live')],
+      ['Cloud Run', 'API and the site, deployed from source', pill(healthy ? 'good' : 'bad', healthy ? 'live' : 'down')],
+      ['Firestore', 'Cache, checks, proposals, history, audit log', pill(fs ? 'good' : 'warn', fs ? 'live' : 'local file')],
+      ['Cloud Scheduler', 'Daily scan of the watchlist', last ? pill('good', `last scan ${when(last)}`) : pill('warn', 'no scan yet')],
+      ['Secret Manager', 'Gemini, SerpApi, Merchant, owner and scan keys', pill('good', 'in use')],
+      ['Gemini', 'Identity gate, photo check, retail recall, grounded note', pill('good', 'live')],
+      ['Google Shopping via SerpApi', 'Listings and prices', pill('good', 'live')],
+      ['eBay Browse API', 'A second source of listings', st.sources.ebay ? pill('good', 'live') : pill('', 'joins when its key is added')],
+      ['Google Merchant Center', 'Resale listings for approved buys', ms.connected ? pill('good', 'live') : ms.configured ? pill('warn', 'needs attention') : pill('', 'ready to connect')],
+      ['Seller checkout', "Approval records the decision and opens the seller's link", pill('ok', 'by design')],
     ];
     document.getElementById('parts')!.replaceChildren(...rows.map(([a, b, c]) => h('tr', {}, h('td', {}, a), h('td', { class: 'muted' }, b), h('td', {}, c))));
+    const fill = h('i', { class: 'a' }); fill.style.width = `${Math.min(100, (st.quota.used / st.quota.limit) * 100)}%`;
+    document.getElementById('bar')!.replaceChildren(fill);
+    document.getElementById('q-note')!.textContent = `${int(st.quota.used)} of ${int(st.quota.limit)} searches used this month. Every search is cached for 12 hours, so repeats are free.`;
     const keys = ['content-security-policy', 'strict-transport-security', 'x-frame-options', 'x-content-type-options', 'referrer-policy', 'permissions-policy', 'cross-origin-opener-policy', 'cross-origin-resource-policy'];
     document.getElementById('sec')!.replaceChildren(...keys.map((k) => h('tr', {}, h('td', { class: 'mono xs' }, k), h('td', { class: 'mono xs muted', style: 'overflow-wrap:anywhere' }, page.headers.get(k) ?? 'not set'))));
   }).catch(() => {});

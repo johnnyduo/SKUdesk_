@@ -174,7 +174,7 @@ export function createApp(deps: AppDeps): Server {
       const one = path.match(/^\/api\/analyses\/([\w-]{3,40})$/);
       if (req.method === 'GET' && one) {
         const a = await deps.store.get<Analysis>('analyses', one[1]);
-        return a ? send(res, 200, a) : send(res, 404, { error: 'not found' });
+        return a ? send(res, 200, { ...a, productKey: productKey(a.query, a.market) }) : send(res, 404, { error: 'not found' });
       }
 
       if (req.method === 'GET' && path === '/api/products') {
@@ -192,6 +192,21 @@ export function createApp(deps: AppDeps): Server {
           return { key, ...s, thumbnail: s.thumbnail ?? thumbs.get(key) ?? null, series: (h?.points ?? []).slice(-30) };
         }));
         return send(res, 200, rows);
+      }
+      // Owner only: take a product off the desk. Its checks and price history go; proposals already decided stay as the record.
+      const gone = path.match(/^\/api\/products\/([a-f0-9]{14})$/);
+      if (req.method === 'DELETE' && gone) {
+        if (!owner) return send(res, 401, { error: 'unauthorized' });
+        if (ownerMin.hit(`o:${ip}`)) return send(res, 429, { error: 'Too many requests.' });
+        const all = (await deps.store.list<Analysis>('analyses', 300)).filter((a) => productKey(a.query, a.market) === gone[1]);
+        if (!all.length) return send(res, 404, { error: 'not found' });
+        const ids = new Set(all.map((a) => a.id));
+        for (const a of all) await deps.store.delete('analyses', a.id);
+        await deps.store.delete('history', gone[1]);
+        let proposals = 0;
+        for (const p of await deps.store.list<Proposal>('proposals', 300)) if (ids.has(p.analysisId) && p.status === 'pending') { await deps.store.delete('proposals', p.id); proposals++; }
+        await logEvent(deps.store, 'owner', `Product removed: ${all[0].query}`, `${all.length} checks, ${proposals} pending proposals`).catch(() => {});
+        return send(res, 200, { removed: gone[1], checks: all.length, proposals });
       }
       const lot = path.match(/^\/api\/lots\/([a-f0-9]{14})$/);
       if (req.method === 'GET' && lot) {

@@ -7,10 +7,11 @@ Live at https://skudesk.lol
 ## How a check works
 
 1. Search Google Shopping (an eBay adapter is ready for when a key is added).
-2. Gemini compares each listing with the product you asked for and quotes the brand and set number it used. Code confirms the quotes are in the listing text. A claim it cannot back up is "uncertain" and never passes.
-3. Offers priced far below the median, or below half the retail price Gemini recalls, are set aside as bad data.
-4. Landed cost, fees, shipping and the margin floor are worked out in integer cents.
-5. If there is a buy, the agent files a proposal. Only the person who ran the check, or the owner, can approve it.
+2. Gemini compares each listing with the product you asked for and quotes the brand and model it used. Code confirms the quotes are in the listing text and reads the storage size and model tier (Pro against Pro Max) itself. A claim it cannot back up is "uncertain" and never passes. Listings the source labels pre-owned or refurbished are not sent to the gate.
+3. Gemini then looks at the photo of each listing that passed, next to the product you asked for. It can only take a match away: a case, a box, another model or colour is dropped.
+4. Offers priced far below the median, or below half the retail price Gemini recalls, are set aside as bad data.
+5. Landed cost, fees, shipping and the margin floor are worked out in integer cents.
+6. If there is a buy, the agent files a proposal. Only the person who ran the check, or the owner, can approve it.
 
 ## Layout
 
@@ -18,7 +19,7 @@ Live at https://skudesk.lol
 |---|---|
 | `src/` | The Node service: API, agent, identity gate, source adapters, storage |
 | `web/` | The Astro site (landing, desk, opportunities, lots, decisions, radar, approvals, replay, market, limits, owner console, metrics) |
-| `eval/` | 43 hand-labelled product pairs and the script that runs them against Gemini |
+| `eval/` | 60 hand-labelled product pairs (phones, LEGO sets, accessories) and the script that runs them against Gemini |
 | `edge/` | The Cloudflare Worker in front of skudesk.lol |
 | `deploy/` | Scripts for Cloud Run, Firestore, Scheduler and Secret Manager |
 | `test/` | Unit tests, UI tests and a smoke test for a deployed URL |
@@ -71,7 +72,7 @@ The service account is added as an Admin user in Merchant Center. If the data so
 
 ## Evaluation
 
-`npm run eval` sends the 43 pairs to Gemini and reports the one number that has to be zero: a pair that should not match but passed the gate. The last run had none, with 41 exact answers and 2 where the model answered "uncertain" for a pair labelled different. Most listing texts are written to look like marketplace titles, and five are real titles that once slipped through. Barcode pairs and image comparison are the next additions to the set.
+`npm run eval` sends the 60 pairs to Gemini and reports the one number that has to be zero: a pair that should not match but passed the gate. The last run had none, with 56 exact answers, 3 where the model answered "uncertain" for a pair labelled different, and 1 identical pair held back. The pairs cover storage sizes, models and tiers, refurbished and carrier-locked phones, cases and bundles, clones, listings that try to steer the answer, and five real titles captured live. Barcode pairs and photo pairs are the next additions to the set.
 
 ## Buying
 

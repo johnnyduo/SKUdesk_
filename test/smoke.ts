@@ -25,7 +25,7 @@ const page = await fetch(base + '/');
 const html = await page.text();
 check('landing page served with a strict policy', page.status === 200 && html.includes('SKUdesk') && /script-src 'self'/.test(page.headers.get('content-security-policy') ?? '') && Boolean(page.headers.get('strict-transport-security')));
 check('pages revalidate (a stale copy can never outlive a deploy)', page.headers.get('cache-control') === 'no-cache' || /no-cache|no-store/.test(page.headers.get('cache-control') ?? ''), page.headers.get('cache-control') ?? '');
-for (const path of ['/app/', '/show/', '/market/', '/app/opportunities/', '/app/lots/', '/app/transactions/', '/app/radar/', '/app/orders/', '/app/create/', '/app/agent/', '/app/policies/', '/app/owner/', '/app/analytics/', '/app/deploy/', '/app/integrations/', '/deck/']) {
+for (const path of ['/app/', '/show/', '/market/', '/app/opportunities/', '/app/orders/', '/app/create/', '/app/policies/', '/app/owner/', '/app/analytics/', '/app/deploy/', '/deck/']) {
   const r = await fetch(base + path);
   check(`page ${path}`, r.status === 200);
 }

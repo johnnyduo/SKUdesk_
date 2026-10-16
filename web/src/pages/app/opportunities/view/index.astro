@@ -9,10 +9,21 @@ import PageHead from '../../../../components/shell/PageHead.astro';
 <div id="view"><p class="muted">Loading…</p></div>
 </Shell></Base>
 <script>
-  import { api, h } from '../../../../lib/client.ts';
+  import { api, h, ownerKey } from '../../../../lib/client.ts';
   import { renderAnalysis } from '../../../../lib/analysis-view.ts';
   const id = new URLSearchParams(location.search).get('id') ?? '';
   const view = document.getElementById('view')!;
   if (!/^[\w-]{3,40}$/.test(id)) view.replaceChildren(h('div', { class: 'alert' }, 'No check selected.'));
-  else api(`/api/analyses/${id}`).then((a) => view.replaceChildren(renderAnalysis(a))).catch(() => view.replaceChildren(h('div', { class: 'alert' }, 'That check was not found.')));
+  else api(`/api/analyses/${id}`).then((a) => {
+    view.replaceChildren(renderAnalysis(a));
+    if (!ownerKey()) return;
+    const key = a.productKey as string | undefined;
+    if (!key) return;
+    const gone = h('button', { class: 'btn ghost', type: 'button' }, 'Remove this product from the desk');
+    gone.addEventListener('click', async () => {
+      if (!confirm(`Remove ${a.query} with its checks and price history?`)) return;
+      try { await api(`/api/products/${key}`, { method: 'DELETE', owner: true }); location.href = '/app/opportunities/'; } catch (e) { gone.textContent = (e as Error).message; }
+    });
+    view.append(h('div', { class: 'actions' }, gone));
+  }).catch(() => view.replaceChildren(h('div', { class: 'alert' }, 'That check was not found.')));
 </script>

@@ -14,7 +14,7 @@ const gradFrom = 4;
 <span class="lp-kicker fade" style="--i:0"><b></b>Gemini Identity Engine · Live on Google Cloud</span>
 <h1 id="hero-h" class="lp-h1">{words.map((w, i) => <><span class:list={['w', { 'lp-grad': i >= gradFrom }]} style={`--i:${i}`}>{w}</span>{' '}</>)}</h1>
 <p class="lp-sub fade" style="--i:2">One agent buys cheapest, helps you sell and hunts arbitrage. Gemini decides what counts as identical, code checks its evidence, and when nothing is provably the same the answer is no.</p>
-<p class="sc-scope fade" style="--i:3">Live category: sealed LEGO sets</p>
+<p class="sc-scope fade" style="--i:3">Live category: new phones</p>
 <div class="lp-cta fade" style="--i:4"><a class="btn lg shine" href="/app/">Open the desk</a><a class="btn lg ghost" href="/show/">Watch the agent decide</a></div>
 </div>
 
@@ -57,7 +57,7 @@ if (root) {
     const real: Item[] = rows.filter((r) => r.thumbnail).map((it) => {
       const line = it.buy ? `Cheapest identical: ${money(it.buy.landedCents, it.currency)} at ${it.buy.seller}` : `${it.considered} listings checked, none identical`;
       const net = it.netCents !== null && it.verdict !== 'unverified' ? (it.netCents >= 0 ? `Net +${money(it.netCents, it.currency)} after all costs` : `Resale would lose ${money(-it.netCents, it.currency)}`) : verdictLabel(it.verdict);
-      return { key: it.key, src: thumbSrc(it.thumbnail)!, name: it.query, tag: it.identical ? `✓ ${it.identical} identical of ${it.considered}` : '✗ Nothing provably the same', tagNo: !it.identical, line, net, href: `/app/lots/view/?key=${it.key}`, go: 'Open this product →' };
+      return { key: it.key, src: thumbSrc(it.thumbnail)!, name: it.query, tag: it.identical ? `✓ ${it.identical} identical of ${it.considered}` : '✗ Nothing provably the same', tagNo: !it.identical, line, net, href: `/market/?key=${it.key}`, go: 'Open this product →' };
     });
     const dev: Item[] = DEVICES.map((d) => fromDevice(d.symbol));
     // The pool is bigger than the ring, so each visit shows a different six: half checked products, half reference devices, alternating.

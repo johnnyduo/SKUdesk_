@@ -1,6 +1,6 @@
 ---
 // "How a check works": three listings slide toward the identity gate; the ones that pass fill in, beside the seven steps.
-const steps = ['Enter a product', 'Search listings', 'Gemini reads each one', 'Code checks its quotes', 'Prices sanity-checked', 'Costs worked out', 'You approve or reject'];
+const steps = ['Enter a product', 'Search listings', 'Gemini reads text and photo', 'Code checks its quotes', 'Prices sanity-checked', 'Costs worked out', 'You approve or reject'];
 const lanes = [{ who: 'Listing A', p: 76, fill: true }, { who: 'Listing B', p: 46, fill: false }, { who: 'Listing C', p: 66, fill: true }];
 const lock = '<path d="M5 12l4 4 10-10"/>';
 ---
@@ -8,7 +8,7 @@ const lock = '<path d="M5 12l4 4 10-10"/>';
 <h2 class="ls-h" id="rf-h">From search to decision.</h2>
 <div class="rd">
 <div class="rd-stage" aria-hidden="true">
-<div class="rd-prod"><span class="rd-box"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></span><b>LEGO 10294 Titanic</b></div>
+<div class="rd-prod"><span class="rd-box"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></span><b>Apple iPhone 16 Pro 256GB</b></div>
 <div class="rd-lanes">
 {lanes.map((l, i) => (
 <div class="rd-lane" style={`--i:${i};--p:${l.p}%`}>

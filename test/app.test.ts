@@ -236,3 +236,21 @@ test('impact counts the latest check per product and only believable-price gaps'
   ]);
   assert.deepEqual(out, { products: 2, listings: 40, passed: 7, rejected: 33, flagged: 1, phantomCents: 9000 });
 });
+
+test('the owner can take a product off the desk; its checks, history and pending proposals go', async () => {
+  const s = await serve();
+  const a = await (await s.post('/api/analyze', { query: 'LEGO SET 1', market: 'us' })).json();
+  const key = (await (await fetch(s.base + '/api/products')).json())[0].key;
+  const gone = (headers: Record<string, string> = {}) => fetch(`${s.base}/api/products/${key}`, { method: 'DELETE', headers });
+  assert.equal((await gone()).status, 401);
+  const r = await (await gone(OWNER)).json();
+  assert.equal(r.removed, key);
+  assert.equal(r.checks, 1);
+  assert.equal(r.proposals, 1);
+  assert.deepEqual(await (await fetch(s.base + '/api/products')).json(), []);
+  assert.equal((await fetch(`${s.base}/api/proposals`)).status, 200);
+  assert.equal((await (await fetch(`${s.base}/api/proposals`)).json()).length, 0);
+  assert.equal((await gone(OWNER)).status, 404);
+  void a;
+  s.close();
+});

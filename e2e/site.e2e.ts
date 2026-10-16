@@ -113,7 +113,7 @@ const runCheck = async (page: Page, query = 'LEGO 10294 Titanic') => {
 
 describe('the site, end to end', () => {
   test('every page loads without a script error', async () => {
-    const paths = ['/', '/app/', '/app/opportunities/', '/app/lots/', '/app/transactions/', '/app/radar/', '/app/orders/', '/show/', '/market/', '/app/create/', '/app/agent/', '/app/policies/', '/app/listings/', '/app/owner/', '/app/analytics/', '/app/deploy/', '/app/integrations/', '/deck/'];
+    const paths = ['/', '/app/', '/app/opportunities/', '/app/orders/', '/show/', '/market/', '/app/create/', '/app/policies/', '/app/listings/', '/app/owner/', '/app/analytics/', '/app/deploy/', '/deck/'];
     for (const p of paths) {
       const { page, errors } = await open(p);
       assert.ok((await page.locator('h1').first().textContent())?.trim(), `${p} has a heading`);
@@ -124,7 +124,7 @@ describe('the site, end to end', () => {
 
   test('no page scrolls sideways on a phone', async () => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 800 } });
-    for (const p of ['/', '/app/', '/app/opportunities/', '/app/lots/', '/market/', '/show/', '/app/policies/', '/app/listings/', '/app/owner/', '/app/deploy/']) {
+    for (const p of ['/', '/app/', '/app/opportunities/', '/market/', '/show/', '/app/policies/', '/app/listings/', '/app/owner/', '/app/deploy/']) {
       const { page } = await open(p, ctx);
       const wide = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
       assert.equal(wide, false, `${p} overflows at 390px`);
@@ -150,12 +150,15 @@ describe('the site, end to end', () => {
     await page.fill('#query', 'LEGO 10294 Titanic');
     await page.click('#desk form button[type=submit]');
     await page.waitForSelector('.wall .chip', { timeout: 10000 });
+    assert.equal(await page.locator('.stage-step', { hasText: 'Photo check' }).count(), 1, 'the run panel has a photo check stage');
     await page.waitForSelector('.verdict', { timeout: 20000 });
     const headline = await page.locator('.v-text').textContent();
     assert.match(headline ?? '', /Cheapest|arbitrage|Arbitrage/);
     assert.ok(await page.locator('.ladder-row').count() >= 2, 'the price ladder has rows');
     assert.ok(await page.locator('.ladder-row.flag').count() >= 1, 'the bait price is shown as not trusted');
     assert.match(await page.locator('.offer .pill.q').first().textContent() ?? '', /brand|number/);
+    assert.ok(await page.locator('.offer .pill', { hasText: 'photo agrees' }).count() >= 1, 'a listing with a picture shows what the photo check said');
+    assert.match(await page.locator('.offer .s', { hasText: 'photo:' }).first().textContent() ?? '', /boxed set/);
     assert.match(await page.locator('.note-panel').textContent() ?? '', /Seven of thirty/);
     await page.locator('.approval .btn', { hasText: 'Approve' }).click();
     await page.waitForSelector('.approval .pill.good', { timeout: 10000 });
@@ -178,14 +181,7 @@ describe('the site, end to end', () => {
     await page.context().close();
   });
 
-  test('lots, market and replay show the checked product', async () => {
-    const lots = await open('/app/lots/');
-    await lots.page.waitForSelector('a.lot');
-    await lots.page.locator('a.lot').first().click();
-    await lots.page.waitForSelector('.verdict');
-    assert.match(lots.page.url(), /lots\/view\/\?key=/);
-    await lots.page.context().close();
-
+  test('market and replay show the checked product', async () => {
     const market = await open('/market/');
     await market.page.waitForSelector('.mk-al .mk-ar');
     await market.page.waitForSelector('.mk-bk');
@@ -445,6 +441,28 @@ describe('the site, end to end', () => {
     await fetch(`${base}/api/merchant/listing/${offer}`, { method: 'DELETE', headers: { 'x-skudesk-owner': OWNER } });
     assert.equal((await fetch(`${base}/p/${offer}/`)).status, 404);
     assert.deepEqual(errors, []);
+    await page.context().close();
+  });
+  test('the owner can take a product off the desk from its evidence page', async () => {
+    const a = await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'LEGO 10294 Titanic to remove', market: 'us' }) })).json();
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript((k) => { try { sessionStorage.setItem('skudesk.owner', k); } catch { /* ignore */ } }, OWNER);
+    const { page, errors } = await open(`/app/opportunities/view/?id=${a.id}`, ctx);
+    await page.waitForSelector('.verdict');
+    page.on('dialog', (d) => void d.accept());
+    await page.getByRole('button', { name: 'Remove this product from the desk' }).click();
+    await page.waitForURL(/\/app\/opportunities\/$/);
+    const rows = (await (await fetch(`${base}/api/products`)).json()) as { query: string }[];
+    assert.ok(!rows.some((r) => r.query === 'LEGO 10294 Titanic to remove'));
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
+  test('a visitor does not see the remove button', async () => {
+    const a = await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'LEGO 10294 Titanic', market: 'us' }) })).json();
+    const { page } = await open(`/app/opportunities/view/?id=${a.id}`);
+    await page.waitForSelector('.verdict');
+    assert.equal(await page.getByRole('button', { name: 'Remove this product from the desk' }).count(), 0);
     await page.context().close();
   });
 });

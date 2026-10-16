@@ -11,7 +11,7 @@ P="$GCP_PROJECT"
 REGION="${REGION:-asia-southeast1}"
 DB="${FIRESTORE_DATABASE:-skudesk}"
 SA="skudesk-run@${P}.iam.gserviceaccount.com"
-WATCHLIST="${WATCHLIST:-LEGO 10294 Titanic|us;LEGO Star Wars Millennium Falcon 75192|us}"
+WATCHLIST="${WATCHLIST:-Apple iPhone 16 Pro 256GB|us;Google Pixel 9 Pro 256GB|us;Apple iPhone 16 128GB|us}"
 
 echo "== service account"
 gcloud iam service-accounts describe "$SA" --project "$P" >/dev/null 2>&1 || \

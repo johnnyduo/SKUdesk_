@@ -6,15 +6,15 @@ import { createRunPanel, streamAnalysis } from './run-panel.ts';
 export async function mountDesk(root: HTMLElement, opts: { onDone?: (a: any) => void } = {}): Promise<{ run(query: string, market: string): Promise<void> }> {
   const st = await api('/api/status').catch(() => null);
   const markets: { code: string; label: string; currency: string }[] = st?.markets ?? [{ code: 'us', label: 'United States', currency: 'USD' }];
-  const picks: { query: string; market: string }[] = st?.watchlist?.length ? st.watchlist : [{ query: 'LEGO 10294 Titanic', market: 'us' }];
+  const picks: { query: string; market: string }[] = st?.watchlist?.length ? st.watchlist : [{ query: 'Apple iPhone 16 Pro 256GB', market: 'us' }];
 
-  const input = h('input', { id: 'query', name: 'query', required: true, minlength: 3, maxlength: 80, placeholder: 'LEGO 10294 Titanic', spellcheck: 'false' });
+  const input = h('input', { id: 'query', name: 'query', required: true, minlength: 3, maxlength: 80, placeholder: 'Apple iPhone 16 Pro 256GB', spellcheck: 'false' });
   const select = h('select', { id: 'market', name: 'market' }, markets.map((m) => h('option', { value: m.code }, `${m.label} (${m.currency})`)));
   const go = h('button', { class: 'btn lg', type: 'submit' }, 'Check');
   const wanted = new URLSearchParams(location.search).get('q');
   if (wanted && wanted.length <= 80) input.value = wanted;
   const form = h('form', { class: 'ask card formrow', autocomplete: 'off' },
-    h('div', { class: 'field grow' }, h('label', { class: 'label', for: 'query' }, 'Product, with its set or model number'), input),
+    h('div', { class: 'field grow' }, h('label', { class: 'label', for: 'query' }, 'Product, with its model name or number'), input),
     h('div', { class: 'field' }, h('label', { class: 'label', for: 'market' }, 'Market'), select), go);
   const examples = h('div', { class: 'examples' }, h('span', { class: 'muted sm' }, 'Try:'),
     picks.map((w) => h('button', { type: 'button', on: { click: () => { input.value = w.query; select.value = w.market; form.requestSubmit(); } } }, w.query)));
