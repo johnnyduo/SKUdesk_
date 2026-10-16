@@ -59,17 +59,17 @@
   <h2>Price comparison breaks the moment two listings are not the same thing.</h2>
   <div class="cols">
     <div>
-      <p>We searched Google Shopping for <strong>LEGO 10294 Titanic</strong>. It returned 36 listings. Among them:</p>
+      <p>We searched Google Shopping for <strong>Apple iPhone 16 Pro 256GB</strong>. It returned 40 listings. Among them:</p>
       <ul>
-        <li>Light kits and spare parts that name the set</li>
-        <li>Generic "building blocks" reusing the set number</li>
-        <li>Used and opened boxes</li>
-        <li>Real sets listed at <strong>$11</strong> and <strong>$19</strong> against a $679.99 retail price</li>
+        <li>Twenty labelled pre-owned, refurbished or restored</li>
+        <li>Pro Max, Plus and 16e models with almost the same name</li>
+        <li>Listings that never say the storage size</li>
+        <li>Two AT&amp;T listings at <strong>$21.59</strong> and <strong>$25.23</strong> against prices near $629</li>
       </ul>
     </div>
     <div class="card">
       <h3>What goes wrong</h3>
-      <p>A naive agent "finds" a 2,000% margin on a $21 Titanic and recommends buying it. The cheapest price is usually the wrong product, or not a real price.</p>
+      <p>A naive agent "finds" a 96% discount on a $21 iPhone and recommends buying it. The cheapest price is usually the wrong product, or not a real price.</p>
       <p><strong>Arbitrage and buying agents are only as good as their idea of "same".</strong></p>
     </div>
   </div>
@@ -113,14 +113,14 @@
 </section>
 
 <section class="slide">
-  <div class="kicker">Live result · Titanic</div>
+  <div class="kicker">Live result · iPhone 16</div>
   <h2>The honest answer is often "no arbitrage". Here is why.</h2>
   <div class="cols" style="grid-template-columns: 1.35fr 1fr; gap: 32px;">
-    <div class="shotbox"><img src="img/titanic.png" alt="SKUdesk result for LEGO 10294 Titanic"></div>
+    <div class="shotbox"><img src="img/iphone.png" alt="SKUdesk result for Apple iPhone 16 128GB"></div>
     <div>
-      <p>30 listings checked, <strong>7 identical</strong>, 19 different, 4 uncertain.</p>
-      <p>Two "identical" offers at $11 and $19 are <strong class="warn">set aside</strong> as bad prices.</p>
-      <p>Cheapest real offer: <strong>$645 landed</strong>. Resale at the next price loses <strong class="bad">$82.01</strong>.</p>
+      <p>Ten listings reached the gate, <strong>5 identical</strong>, 5 different. Twenty-nine more were left out because Google labels them pre-owned or refurbished.</p>
+      <p>Gemini looked at each photo as well, and all five agreed with the text.</p>
+      <p>Cheapest real offer: <strong>$850 landed</strong>. Resale at the next price loses <strong class="bad">$100.01</strong>.</p>
       <p class="note">Asking prices, not sold prices. Fees, return reserve and shipping are shown and editable assumptions.</p>
     </div>
   </div>
@@ -128,13 +128,13 @@
 </section>
 
 <section class="slide">
-  <div class="kicker">Live result · Orchid</div>
+  <div class="kicker">Live result · Pixel 9 Pro</div>
   <h2>When nothing is provably the same, the agent buys nothing.</h2>
   <div class="cols" style="grid-template-columns: 1.35fr 1fr; gap: 32px;">
-    <div class="shotbox"><img src="img/orchid.png" alt="SKUdesk result for LEGO Icons Orchid 10311"></div>
+    <div class="shotbox"><img src="img/pixel.png" alt="SKUdesk result for Google Pixel 9 Pro 256GB"></div>
     <div>
-      <p>30 listings for <strong>LEGO Icons Orchid 10311</strong>. <strong class="bad">Zero</strong> cleared the gate.</p>
-      <p>Before the evidence check, a "866 PCS Creative Bouquet" building-block set reusing the number 10311 passed as identical. Now it does not.</p>
+      <p>28 listings for <strong>Google Pixel 9 Pro 256GB</strong>. <strong class="bad">Zero</strong> cleared the gate.</p>
+      <p>Pixel 9, 9 Pro XL, 9 Pro Fold and 128 GB units all carry nearly the same name. None is the 256 GB Pixel 9 Pro that was asked for.</p>
       <p>No proposal is filed. Nothing is offered for approval.</p>
     </div>
   </div>
