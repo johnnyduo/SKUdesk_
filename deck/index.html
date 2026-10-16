@@ -99,7 +99,8 @@
     <div class="card">
       <h3>Defences, all tested</h3>
       <ul>
-        <li>Verbatim evidence check on brand and identifier</li>
+        <li>Verbatim evidence check on brand and identifier; storage and model tier read by code</li>
+        <li>Photo check: Gemini looks at the picture and can only take a match away</li>
         <li>Listing text treated as untrusted (injection pairs in the eval)</li>
         <li>Price sanity against Gemini's recalled retail price, flagged as recalled, not live</li>
         <li>"Too good to be true" above a 50% margin</li>
@@ -140,20 +141,20 @@
 
 <section class="slide">
   <div class="kicker">Evidence</div>
-  <h2>43 hand-labelled pairs, run against real Gemini. The number that matters is zero.</h2>
+  <h2>60 hand-labelled pairs, run against real Gemini. The number that matters is zero.</h2>
   <div class="cols">
     <div>
       <div class="big good">0</div>
       <p style="margin-top:8px"><strong>false-identical</strong>: pairs that should not match but passed the gate.</p>
-      <p>41 of 43 exact. The other 2 were labelled different and answered "uncertain", which is the safe side.</p>
+      <p>56 of 60 exact. Three were labelled different and answered "uncertain", the safe side, and one identical pair was held back.</p>
     </div>
     <div class="card">
-      <h3>Said plainly</h3>
+      <h3>What the pairs cover</h3>
       <ul>
-        <li>Most listing texts are hand-written to look like marketplace titles; 5 are real titles from the day we found the leak</li>
-        <li>Labels come from LEGO set numbers</li>
-        <li>No GTIN pairs and no image inputs yet</li>
-        <li>43 labelled pairs today, with barcode and image pairs next</li>
+        <li>Phones and LEGO sets: storage sizes, Pro against Pro Max, refurbished and carrier-locked units, cases, bundles, clones, injected instructions</li>
+        <li>5 titles are real ones captured live the day we found the leak</li>
+        <li>Gemini also looks at each matching listing's photo and can only take a match away</li>
+        <li>Barcode pairs are next</li>
       </ul>
     </div>
   </div>
@@ -206,8 +207,8 @@
   <div class="kicker">Impact and next</div>
   <h2>Retail teams lose money on "the same item" that was not.</h2>
   <ul>
-    <li><strong>Now:</strong> sealed LEGO, US market, five markets selectable</li>
-    <li><strong>Next:</strong> GTIN and image evidence, eBay sold-price data, more categories where identity is checkable</li>
+    <li><strong>Now:</strong> new phones and sealed LEGO, US market, six markets selectable</li>
+    <li><strong>Next:</strong> GTIN evidence, eBay sold-price data, more categories where identity is checkable</li>
     <li><strong>Principle:</strong> the agent's value is knowing when to say no, and showing its evidence when it says yes</li>
   </ul>
   <p style="margin-top:28px"><strong>Try it:</strong> skudesk.lol &nbsp;·&nbsp; <strong>Code:</strong> github.com/johnnyduo/SKUdesk_</p>
