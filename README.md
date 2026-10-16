@@ -55,7 +55,7 @@ The kill switch stops scans, new proposals and approvals. A proposal above the p
 - **A deal needs a bid at or above the best ask.** Most of the time none reaches it, because costs take about 15% of a resale. When one does, the page says which, and whether the live agent's own floor is cleared. A buy only ever becomes a proposal that a person approves.
 - The chart is the history of the cheapest identical landed price, one point per check. The daily scan and every check run from the page add a point, so it fills in over days.
 - Every watched product is a checked product with its own page. A product with a 3D model (phones, AirPods, Switch, MacBook, Watch, PS5) opens on the model and has a Photo button; the others show their best offer's photo with the background removed, and it turns in 3D too. A product the gate found nothing identical for shows what it turned down and why, and plots those listings by price. Products nobody has checked yet are listed separately and carry no price.
-- The nightly scan checks the four watches that have waited longest, so a longer watchlist (up to twelve) is covered in turn.
+- The scheduled scan checks the watches that have waited longest (the number and the schedule are settings, `SCAN_MAX` and `SCAN_SCHEDULE`), so a longer watchlist (up to twelve) is covered in turn.
 
 ## Resale listings
 

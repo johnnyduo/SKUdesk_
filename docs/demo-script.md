@@ -30,6 +30,6 @@ Rehearsed on https://skudesk.lol with the data as of 16 Oct 2026. Use Chrome at 
 - **Is the price real?** It is the asking price Google Shopping returned at the time of the check, not a sold price.
 - **Where does the retail price come from?** Gemini's recall, used only to set aside prices that cannot be believed.
 - **What does Gemini do besides read titles?** It reads each matching listing's photo, recalls a retail price, and writes the note, which is checked against the computed numbers.
-- **Why is the chart short?** Each check adds a point and the scheduler adds one every night at 02:00 UTC.
+- **Why is the chart short?** Each check adds a point, and the scheduler checks the watchlist on a timer (the Market page shows the time of the next scan).
 - **Does it buy anything?** No. A person approves, then completes the purchase on the seller's site.
 - **eBay?** The adapter is ready and joins as soon as its key is added.

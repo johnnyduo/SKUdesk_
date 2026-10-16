@@ -2,6 +2,7 @@ import { $, api, fill, h, int, money, safeLink, thumbSrc, verdictLabel, when } f
 import { createChart, type Pt } from './chart.ts';
 import { DEVICES, deviceForQuery, deviceLine, type Device } from './devices.ts';
 import { JOURNEY } from './journey.ts';
+import { parseSchedule } from './schedule.ts';
 import { createViewer, type Viewer } from './product3d.ts';
 import { approvalPanel } from './analysis-view.ts';
 import { createRunPanel, streamAnalysis } from './run-panel.ts';
@@ -269,7 +270,7 @@ export function mountTerminal(root: HTMLElement): void {
     const points: Pt[] = (lot?.series ?? []).map((p) => ({ t: p.t, y: p.buyLandedCents, v: p.identical }));
     const dots = points.every((p) => p.y === null) ? (a.rejected ?? []).map((g: any) => ({ y: g.offer.priceCents, label: `${g.offer.seller}: ${g.offer.title.slice(0, 50)}` })) : undefined;
     chart.update({ points, currency: a.currency, refCents: dots ? null : a.retailCents, mode, dots });
-    el.cap.textContent = dots?.length ? 'Each dot is a listing that matched the search but was not provably the product. None of them is a price to buy at.' : `${points.filter((p) => p.y !== null).length} price points. The daily scan adds one each day and every check you run adds one. Bars show how many offers passed the identity gate.`;
+    el.cap.textContent = dots?.length ? 'Each dot is a listing that matched the search but was not provably the product. None of them is a price to buy at.' : `${points.filter((p) => p.y !== null).length} price points. The scheduled scan adds one each time it runs, and every check you run adds one. Bars show how many offers passed the identity gate.`;
   }
 
   function paintRecent(): void {
@@ -287,15 +288,14 @@ export function mountTerminal(root: HTMLElement): void {
 
   function paintClock(): void {
     const now = new Date();
-    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 2, 0, 0));
-    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
-    const left = next.getTime() - now.getTime();
+    const sched = parseSchedule(status?.scanSchedule);
+    const left = sched.next(now).getTime() - now.getTime();
     const hh = String(Math.floor(left / 3600000)).padStart(2, '0'), mm = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0'), ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
-    const pctDone = 100 - (left / 86400000) * 100;
+    const pctDone = 100 - (left / sched.periodMs) * 100;
     const lastScan = scans[0];
     const bar = h('i', {});
     bar.style.width = `${pctDone.toFixed(1)}%`;
-    el.clock.replaceChildren(h('div', { class: 'mk-ph' }, h('h2', {}, 'Scan clock'), h('span', { class: 'mk-ph-r' }, limits?.paused ? 'PAUSED' : 'daily 02:00 UTC')),
+    el.clock.replaceChildren(h('div', { class: 'mk-ph' }, h('h2', {}, 'Scan clock'), h('span', { class: 'mk-ph-r' }, limits?.paused ? 'PAUSED' : sched.label.toUpperCase())),
       h('div', { class: 'mk-clk' }, h('div', { class: 'mk-clk-t n' }, `${hh}:${mm}:${ss}`), h('div', { class: 'mk-clk-s' }, limits?.paused ? 'The agent is paused by its owner.' : 'until the next scheduled scan'), h('div', { class: 'mk-clk-bar', 'aria-hidden': 'true' }, bar),
         h('div', { class: 'mk-clk-s' }, lastScan ? `Last scan ${when(lastScan.createdAt)}, ${lastScan.done.length} checked` : 'No scan has run yet')));
     el.live.className = `mk-live${limits?.paused ? ' bad' : ''}`;

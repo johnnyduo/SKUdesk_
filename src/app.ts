@@ -25,6 +25,8 @@ export interface AppDeps {
   merchant?: MerchantDeps;
   siteDir?: string;
   scanMax?: number;
+  // The cron text of the scheduled scan, so pages can show when the next one runs.
+  scanSchedule?: string;
   analyzePerMin?: number;
   readPerMin?: number;
   maxConcurrent?: number;
@@ -156,7 +158,7 @@ export function createApp(deps: AppDeps): Server {
           store: deps.storeKind, sources: deps.sources,
           quota: { used: await deps.quota.used(), limit: deps.quota.limit },
           markets: Object.values(MARKETS).map((m) => ({ code: m.code, label: m.label, currency: m.currency })),
-          defaults: DEFAULT_ASSUMPTIONS, limits, watchlist: deps.watchlist, maxWatches: MAX_WATCHES, scanMax: deps.scanMax ?? 3, ownerEnabled: Boolean(ownerKey),
+          defaults: DEFAULT_ASSUMPTIONS, limits, watchlist: deps.watchlist, maxWatches: MAX_WATCHES, scanMax: deps.scanMax ?? 3, scanSchedule: deps.scanSchedule ?? '0 2 * * *', ownerEnabled: Boolean(ownerKey),
         });
       }
 

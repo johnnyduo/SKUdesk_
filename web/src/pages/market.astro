@@ -3,7 +3,7 @@ import '../styles/market.css';
 import '../styles/product3d.css';
 import Base from '../layouts/Base.astro';
 ---
-<Base title="Market | SKUdesk" description="A trading-terminal view of identical offers: price chart, offer book, buy ticket and the daily scan clock."><div id="terminal" class="mk" data-testid="market-terminal"><p class="mk-none">Loading the market…</p></div></Base>
+<Base title="Market | SKUdesk" description="A trading-terminal view of identical offers: price chart, offer book, buy ticket and the scheduled scan clock."><div id="terminal" class="mk" data-testid="market-terminal"><p class="mk-none">Loading the market…</p></div></Base>
 <script>
   import { mountTerminal } from '../lib/terminal.ts';
   mountTerminal(document.getElementById('terminal')!);

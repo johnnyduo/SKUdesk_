@@ -112,7 +112,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
       const tg = svgEl('text', { class: 'mk-tagt', x: W - padO.r + 8, y: y + 4 }); tg.textContent = money(v, cur); svg.append(tg);
       svg.append(svgEl('circle', { class: 'mk-pulse', cx: W - padO.r, cy: y, r: 4 }), svgEl('circle', { class: 'mk-lastdot', cx: W - padO.r, cy: y, r: 3.5 }));
       const note = svgEl('text', { class: 'mk-ax mk-ax-s', x: padO.l + 2, y: 16 });
-      note.textContent = `FIRST CHECK · ${new Date(pts[0].t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).toUpperCase()} · THE DAILY SCAN ADDS A POINT EACH NIGHT`;
+      note.textContent = `FIRST CHECK · ${new Date(pts[0].t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).toUpperCase()} · THE SCHEDULED SCAN ADDS A POINT EACH TIME IT RUNS`;
       svg.append(note);
       return;
     }

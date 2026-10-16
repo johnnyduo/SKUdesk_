@@ -55,6 +55,7 @@ const app = createApp({
   ownerKey: env('OWNER_KEY') ?? '',
   edgeSecret: env('EDGE_SECRET') ?? '',
   scanMax: Number(env('SCAN_MAX') ?? 3),
+  scanSchedule: env('SCAN_SCHEDULE') ?? '0 2 * * *',
   sources: { serpapi: true, ebay: Boolean(ebay) },
   agent: {
     engine, vision, store, model,

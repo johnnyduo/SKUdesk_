@@ -29,7 +29,7 @@ A Node service on <b>Cloud Run</b>, a <b>Firestore</b> database, a <b>Cloud Sche
     const rows: [string, string, HTMLElement][] = [
       ['Cloud Run', 'API and the site, deployed from source', pill(healthy ? 'good' : 'bad', healthy ? 'live' : 'down')],
       ['Firestore', 'Cache, checks, proposals, history, audit log', pill(fs ? 'good' : 'warn', fs ? 'live' : 'local file')],
-      ['Cloud Scheduler', 'Daily scan of the watchlist', last ? pill('good', `last scan ${when(last)}`) : pill('warn', 'no scan yet')],
+      ['Cloud Scheduler', 'Scheduled scan of the watchlist', last ? pill('good', `last scan ${when(last)}`) : pill('warn', 'no scan yet')],
       ['Secret Manager', 'Gemini, SerpApi, Merchant, owner and scan keys', pill('good', 'in use')],
       ['Gemini', 'Identity gate, photo check, retail recall, grounded note', pill('good', 'live')],
       ['Google Shopping via SerpApi', 'Listings and prices', pill('good', 'live')],

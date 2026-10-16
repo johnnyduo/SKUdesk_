@@ -11,6 +11,7 @@ P="$GCP_PROJECT"
 REGION="${REGION:-asia-southeast1}"
 DB="${FIRESTORE_DATABASE:-skudesk}"
 SA="skudesk-run@${P}.iam.gserviceaccount.com"
+SCAN_SCHEDULE="${SCAN_SCHEDULE:-0 2 * * *}"
 WATCHLIST="${WATCHLIST:-Apple iPhone 16 Pro 256GB|us;Google Pixel 9 Pro 256GB|us;Apple iPhone 16 128GB|us}"
 
 echo "== service account"
@@ -53,13 +54,13 @@ gcloud run deploy skudesk --source . --region "$REGION" --project "$P" \
   --service-account "$SA" --allow-unauthenticated \
   --min-instances 0 --max-instances 3 --cpu 1 --memory 512Mi --timeout 120 --concurrency 40 \
   --set-env-vars "GCP_PROJECT=${P},FIRESTORE_DATABASE=${DB},GEMINI_MODEL=${GEMINI_MODEL},MONTHLY_SEARCH_CAP=${MONTHLY_SEARCH_CAP:-150},SCAN_MAX=${SCAN_MAX:-4}${MERCHANT_ENV}" \
-  --set-env-vars "^@^WATCHLIST=${WATCHLIST}" \
+  --set-env-vars "^@^WATCHLIST=${WATCHLIST}@SCAN_SCHEDULE=${SCAN_SCHEDULE}" \
   --set-secrets "GEMINI_API_KEY=skudesk-gemini-key:latest,SERPAPI_KEY=skudesk-serpapi-key:latest,SCAN_SECRET=skudesk-scan-secret:latest,OWNER_KEY=skudesk-owner-key:latest,EDGE_SECRET=skudesk-edge-secret:latest${EBAY_SECRETS}${MERCHANT_SECRETS}"
 URL="$(gcloud run services describe skudesk --region "$REGION" --project "$P" --format 'value(status.url)')"
 
 echo "== scheduler"
 JOB=skudesk-daily-scan
-COMMON=(--location "$REGION" --project "$P" --schedule "0 2 * * *" --time-zone "UTC" --uri "${URL}/api/jobs/scan" --http-method POST --attempt-deadline 180s --max-retry-attempts 1)
+COMMON=(--location "$REGION" --project "$P" --schedule "$SCAN_SCHEDULE" --time-zone "UTC" --uri "${URL}/api/jobs/scan" --http-method POST --attempt-deadline 180s --max-retry-attempts 1)
 if gcloud scheduler jobs describe "$JOB" --location "$REGION" --project "$P" >/dev/null 2>&1; then
   gcloud scheduler jobs update http "$JOB" "${COMMON[@]}" --update-headers "x-skudesk-secret=${SCAN_SECRET}" >/dev/null
 else

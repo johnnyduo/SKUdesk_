@@ -136,7 +136,7 @@ export function lineChart(points: { t: string; y: number | null }[], cur: string
   const W = 640, H = opts.height ?? 200, pad = { l: 56, r: 12, t: 12, b: 24 };
   const wrap = h('div', { class: 'chart' });
   if (data.length < 2) {
-    wrap.append(h('p', { class: 'muted sm' }, data.length ? `One price point so far (${money(data[0].y, cur)}). The scheduled scan adds one each day, so a trend appears after the next scan.` : 'No price history yet.'));
+    wrap.append(h('p', { class: 'muted sm' }, data.length ? `One price point so far (${money(data[0].y, cur)}). The scheduled scan adds one each time it runs, so a trend appears after the next scan.` : 'No price history yet.'));
     return wrap;
   }
   const ys = data.map((d) => d.y);
