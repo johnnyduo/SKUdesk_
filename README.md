@@ -54,7 +54,8 @@ The kill switch stops scans, new proposals and approvals. A proposal above the p
 - **Bids** are what four buyer policies could pay. Each one is the live agent's cost model with a different margin floor (twice the owner's floor, the floor itself, half of it, break-even). A bid is the highest landed price that still clears its floor after fees, returns and postage when the item is resold at the next cheapest identical price.
 - **A deal needs a bid at or above the best ask.** Most of the time none reaches it, because costs take about 15% of a resale. When one does, the page says which, and whether the live agent's own floor is cleared. A buy only ever becomes a proposal that a person approves.
 - The chart is the history of the cheapest identical landed price, one point per check. The daily scan and every check run from the page add a point, so it fills in over days.
-- Products without a check yet (AirPods, Switch, MacBook, Watch, Galaxy, PS5, a phone case) are 3D previews with no price until a check has run. A checked product is shown as its best offer's photo with the background removed, and it turns in 3D too.
+- Every watched product is a checked product with its own page. A product with a 3D model (phones, AirPods, Switch, MacBook, Watch, PS5) opens on the model and has a Photo button; the others show their best offer's photo with the background removed, and it turns in 3D too. A product the gate found nothing identical for shows what it turned down and why, and plots those listings by price. Products nobody has checked yet are listed separately and carry no price.
+- The nightly scan checks the four watches that have waited longest, so a longer watchlist (up to twelve) is covered in turn.
 
 ## Resale listings
 
