@@ -2,6 +2,8 @@
 // innerHTML is used solely for our own constant icons.
 
 export const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+/** replaceChildren that skips null, undefined and false: the DOM would print them as text. */
+export const fill = (el: Element, ...kids: (Node | string | null | undefined | false)[]): void => el.replaceChildren(...(kids.filter((k) => k !== null && k !== undefined && k !== false) as (Node | string)[]));
 export const reduceMotion = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 type Props = Record<string, unknown> & { on?: Record<string, (e: Event) => void> };

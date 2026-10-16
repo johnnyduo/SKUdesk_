@@ -105,6 +105,17 @@ async function open(path: string, ctx?: BrowserContext): Promise<{ page: Page; e
   return { page, errors };
 }
 
+// The DOM prints a missing value as the word itself. No page may show it.
+const strayText = async (page: Page): Promise<string[]> => page.evaluate(() => {
+  const found: string[] = [];
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const t = (n.textContent ?? '').trim();
+    if (/^(null|undefined|NaN|\[object \w+\])$/.test(t) || /\b(undefined|NaN|\[object \w+\])\b/.test(t) || /\$NaN|NaN%|null%|\bnull\s*\/\s*\d|\d+\s*of\s*(undefined|null)/.test(t)) found.push(`${t.slice(0, 80)} in <${n.parentElement?.tagName.toLowerCase()} class="${n.parentElement?.className}"> ${(n.parentElement?.parentElement?.className ?? '')}`);
+  }
+  return found;
+});
+
 const runCheck = async (page: Page, query = 'LEGO 10294 Titanic') => {
   await page.fill('#query', query);
   await page.click('#desk form button[type=submit]');
@@ -118,7 +129,35 @@ describe('the site, end to end', () => {
       const { page, errors } = await open(p);
       assert.ok((await page.locator('h1').first().textContent())?.trim(), `${p} has a heading`);
       assert.deepEqual(errors, [], `${p}: ${errors.join(' | ')}`);
+      await page.waitForTimeout(700);
+      assert.deepEqual(await strayText(page), [], `${p} prints a missing value`);
       await page.context().close();
+    }
+  });
+
+  test('no page prints a missing value as text, for every kind of product the market can show', async () => {
+    for (const q of ['LEGO 10294 Titanic stray text', 'LEGO 10294 nothing identical stray', 'Apple Watch Series 10 42mm']) await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: q, market: 'us' }) })).text();
+    for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      const ctx = await browser.newContext({ viewport: vp });
+      const { page, errors } = await open('/market/', ctx);
+      await page.waitForSelector('[data-testid=product-picker]');
+      await page.waitForFunction(() => /\w/.test(document.querySelector('.mk-stats .mk-id')?.textContent ?? ''));
+      await page.locator('[data-testid=product-picker]').click();
+      const all = await page.locator('.mk-pk-o').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.id!));
+      await page.locator('[data-testid=product-picker]').click();
+      assert.ok(all.length >= 10, 'checked products, one with no identical offer, and the unchecked previews');
+      for (const id of all) {
+        await page.locator('[data-testid=product-picker]').click();
+        await page.locator(`.mk-pk-o[data-id="${id}"]`).click();
+        await page.waitForTimeout(450);
+        if (vp.width < 700) await page.getByRole('tab', { name: 'Assets' }).click();
+        assert.deepEqual(await strayText(page), [], `${id} at ${vp.width}px prints a missing value`);
+        const panel = await page.locator('.mk-p3d').evaluate((e) => (e as HTMLElement).innerText);
+        assert.doesNotMatch(panel, /\bnull\b|\bundefined\b/, `${id}: the picture panel shows stray text`);
+        if (await page.locator('.mk-3dseg').count()) { await page.getByRole('button', { name: 'Photo' }).click(); await page.waitForTimeout(300); assert.deepEqual(await strayText(page), [], `${id} photo view`); await page.getByRole('button', { name: '3D model' }).click(); await page.waitForTimeout(300); assert.deepEqual(await strayText(page), [], `${id} model view`); }
+      }
+      assert.deepEqual(errors, []);
+      await ctx.close();
     }
   });
 
@@ -329,7 +368,7 @@ describe('the site, end to end', () => {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => !/PS5/.test(document.querySelector('.mk-stats .mk-id')?.textContent ?? ''));
     await page.locator('[data-testid=product-picker]').click();
-    await page.locator('.mk-pk-o[data-symbol="10294"]').click();
+    await page.locator('.mk-pk-o').filter({ has: page.getByText('LEGO 10294 Titanic', { exact: true }) }).click();
     await page.waitForSelector('.mk-bk.best');
     assert.deepEqual(errors, []);
     await page.context().close();

@@ -1,4 +1,4 @@
-import { h } from './client.ts';
+import { fill, h } from './client.ts';
 
 // A select-only combobox for choosing the product: one tap from anywhere on the page, grouped, with each row's
 // last price and change. Focus stays on the button; the arrow keys move the highlight (aria-activedescendant).
@@ -30,7 +30,7 @@ export function createPicker(onPick: (id: string) => void): Picker {
   const optId = (i: number): string => `${uid}-o${i}`;
   const paintBtn = (): void => {
     const it = items.find((x) => x.id === selected);
-    btn.replaceChildren(
+    fill(btn,
       h('span', { class: 'mk-pk-id' }, h('b', { class: 'mk-pk-sym' }, it?.symbol ?? 'Choose a product'), h('span', { class: 'mk-pk-name' }, it?.name ?? '')),
       it ? h('span', { class: 'mk-pk-px' }, h('span', { class: 'n' }, it.price), h('span', { class: `n mk-pk-ch ${it.dir}` }, it.change)) : null,
       h('span', { class: 'mk-pk-caret', 'aria-hidden': 'true' }, '▾'));

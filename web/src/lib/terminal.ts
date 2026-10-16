@@ -1,4 +1,4 @@
-import { $, api, h, int, money, safeLink, thumbSrc, verdictLabel, when } from './client.ts';
+import { $, api, fill, h, int, money, safeLink, thumbSrc, verdictLabel, when } from './client.ts';
 import { createChart, type Pt } from './chart.ts';
 import { DEVICES, deviceForQuery, deviceLine, type Device } from './devices.ts';
 import { JOURNEY } from './journey.ts';
@@ -174,7 +174,7 @@ export function mountTerminal(root: HTMLElement): void {
       photo?.dispose(); photo = null; photoKey = '';
       const shown = { ...dev, symbol: code(r.query), name: r.query, sub: 'Generic 3D model' };
       if (!viewer) viewer = createViewer(shown); else viewer.set(shown);
-      el.p3d.replaceChildren(viewer.el, toggle());
+      fill(el.p3d, viewer.el, toggle());
       return;
     }
     viewer?.dispose(); viewer = null;
@@ -191,7 +191,7 @@ export function mountTerminal(root: HTMLElement): void {
       return;
     }
     photo = createPhotoViewer(src, r ? code(r.query) : '', name, 'New, sealed');
-    el.p3d.replaceChildren(photo.el, toggle());
+    fill(el.p3d, photo.el, toggle());
   }
 
   const curId = (): string => (selDevice ? selDevice.symbol : selKey);
@@ -297,7 +297,7 @@ export function mountTerminal(root: HTMLElement): void {
   function paintBook(): void {
     const a = lot?.analysis;
     if (selDevice || !a) {
-      el.book.replaceChildren(h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book')), h('p', { class: 'mk-none' }, selDevice ? 'No live check for this reference product yet.' : 'Select a product.'),
+      fill(el.book, h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book')), h('p', { class: 'mk-none' }, selDevice ? 'No check has run on this product yet.' : 'Select a product.'),
         selDevice ? h('div', { class: 'mk-tkt' }, h('a', { class: 'mk-btn mk-btn-pri', href: `/app/?q=${encodeURIComponent(selDevice.query)}` }, 'Check live offers')) : null);
       return;
     }

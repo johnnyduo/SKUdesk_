@@ -1,4 +1,5 @@
 import { h, reduceMotion } from './client.ts';
+import { fitDistance } from './fit.ts';
 
 // A rotatable 3D cutout for a product that has no model of its own: the photo from the best offer with its background taken away,
 // given some thickness and a soft shadow. Drag to turn it, scroll to zoom, arrow keys too. three.js loads lazily; without WebGL the flat photo stays.
@@ -157,7 +158,7 @@ export function createPhotoViewer(src: string, symbol: string, name: string, sub
         const W = stage.clientWidth || 300, H = stage.clientHeight || 300;
         if (canvas.width !== Math.round(W * renderer.getPixelRatio()) || canvas.height !== Math.round(H * renderer.getPixelRatio())) renderer.setSize(W, H, false);
         camera.aspect = W / H; camera.updateProjectionMatrix();
-        const dist = (Math.max(hgt, wid / camera.aspect) * 0.62) / Math.tan((camera.fov * Math.PI) / 360) / zoom + 0.2;
+        const dist = fitDistance({ hgt, wid, aspect: camera.aspect, fovDeg: camera.fov, zoom });
         camera.position.set(0, 0, dist);
         if (!drag) {
           ry += vy; rx += vx; vy *= 0.94; vx *= 0.94;
