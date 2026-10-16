@@ -43,7 +43,7 @@ export interface Watch {
   lastRunAt?: string;
 }
 
-export const MAX_WATCHES = 8;
+export const MAX_WATCHES = 12;
 export const watchId = (query: string, market: string): string => createHash('sha1').update(`${query.trim().toLowerCase()}|${market}`).digest('hex').slice(0, 12);
 
 export async function listWatches(store: Store): Promise<Watch[]> {

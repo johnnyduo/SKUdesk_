@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { analyze, DEFAULT_ASSUMPTIONS, type AgentDeps } from './agent.ts';
 import { arbitrage } from './economics.ts';
-import { addWatch, getLimits, listWatches, logEvent, parseLimitsPatch, productKey, setLimits, type EventRow, type HistoryPoint, type Watch } from './domain.ts';
+import { MAX_WATCHES, addWatch, getLimits, listWatches, logEvent, parseLimitsPatch, productKey, setLimits, type EventRow, type HistoryPoint, type Watch } from './domain.ts';
 import { clientIp, imageUrlOk, isOwner, RateLimiter, safeEq, SECURITY_HEADERS } from './security.ts';
 import { MARKETS } from './serpapi.ts';
 import { loadSite, serveStatic } from './static.ts';
@@ -156,7 +156,7 @@ export function createApp(deps: AppDeps): Server {
           store: deps.storeKind, sources: deps.sources,
           quota: { used: await deps.quota.used(), limit: deps.quota.limit },
           markets: Object.values(MARKETS).map((m) => ({ code: m.code, label: m.label, currency: m.currency })),
-          defaults: DEFAULT_ASSUMPTIONS, limits, watchlist: deps.watchlist, ownerEnabled: Boolean(ownerKey),
+          defaults: DEFAULT_ASSUMPTIONS, limits, watchlist: deps.watchlist, maxWatches: MAX_WATCHES, scanMax: deps.scanMax ?? 3, ownerEnabled: Boolean(ownerKey),
         });
       }
 
