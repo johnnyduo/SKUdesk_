@@ -11,6 +11,8 @@ export async function mountDesk(root: HTMLElement, opts: { onDone?: (a: any) => 
   const input = h('input', { id: 'query', name: 'query', required: true, minlength: 3, maxlength: 80, placeholder: 'LEGO 10294 Titanic', spellcheck: 'false' });
   const select = h('select', { id: 'market', name: 'market' }, markets.map((m) => h('option', { value: m.code }, `${m.label} (${m.currency})`)));
   const go = h('button', { class: 'btn lg', type: 'submit' }, 'Check');
+  const wanted = new URLSearchParams(location.search).get('q');
+  if (wanted && wanted.length <= 80) input.value = wanted;
   const form = h('form', { class: 'ask card formrow', autocomplete: 'off' },
     h('div', { class: 'field grow' }, h('label', { class: 'label', for: 'query' }, 'Product, with its set or model number'), input),
     h('div', { class: 'field' }, h('label', { class: 'label', for: 'market' }, 'Market'), select), go);

@@ -42,28 +42,48 @@ const gradFrom = 4;
 <script>
 import { startShowcase } from '../../showcase/showcase.ts';
 import { api, h, money, thumbSrc, verdictLabel } from '../../lib/client.ts';
+import { DEVICES, deviceLine } from '../../lib/devices.ts';
+
+type Item = { key: string; src: string; name: string; tag: string; tagNo: boolean; line: string; net: string; href: string; go: string };
 
 const root = document.querySelector<HTMLElement>('.sc');
 if (root) {
-  api<any[]>('/api/products').then(async (rows) => {
-    const items = rows.filter((r) => r.thumbnail).slice(0, 8);
-    if (items.length < 2) { root.classList.add('sc-static'); return; }
+  const fmt = (c: number) => money(c);
+  const fromDevice = (symbol: string): Item => {
+    const d = DEVICES.find((x) => x.symbol === symbol)!;
+    return { key: d.symbol, src: d.art, name: d.name, tag: 'Reference product', tagNo: true, line: deviceLine(d, fmt), net: 'Run a check to see live offers', href: `/app/?q=${encodeURIComponent(d.query)}`, go: 'Check this product →' };
+  };
+  api<any[]>('/api/products').catch(() => [] as any[]).then(async (rows) => {
+    const real: Item[] = rows.filter((r) => r.thumbnail).map((it) => {
+      const line = it.buy ? `Cheapest identical: ${money(it.buy.landedCents, it.currency)} at ${it.buy.seller}` : `${it.considered} listings checked, none identical`;
+      const net = it.netCents !== null && it.verdict !== 'unverified' ? (it.netCents >= 0 ? `Net +${money(it.netCents, it.currency)} after all costs` : `Resale would lose ${money(-it.netCents, it.currency)}`) : verdictLabel(it.verdict);
+      return { key: it.key, src: thumbSrc(it.thumbnail)!, name: it.query, tag: it.identical ? `✓ ${it.identical} identical of ${it.considered}` : '✗ Nothing provably the same', tagNo: !it.identical, line, net, href: `/app/lots/view/?key=${it.key}`, go: 'Open this product →' };
+    });
+    const dev: Item[] = DEVICES.map((d) => fromDevice(d.symbol));
+    // The pool is bigger than the ring, so each visit shows a different six: half checked products, half reference devices, alternating.
+    const shuffle = <T,>(a: T[]): T[] => { const x = [...a]; for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
+    const R = shuffle(real), D = shuffle(dev);
+    const nReal = Math.min(R.length, 3), nDev = Math.min(D.length, 6 - nReal);
+    const first = Math.random() < 0.5;
+    const items: Item[] = [];
+    for (let i = 0; i < Math.max(nReal, nDev); i++) {
+      const pair = first ? [D[i], R[i]] : [R[i], D[i]];
+      for (const x of pair) if (x && items.length < 6) items.push(x);
+    }
     const rail = document.getElementById('sc-rail')!;
     const caps = document.getElementById('sc-captions')!;
     items.forEach((it, i) => {
       rail.append(h('i', { class: i === 0 ? 'on' : '' }));
-      const line = it.buy ? `Cheapest identical: ${money(it.buy.landedCents, it.currency)} at ${it.buy.seller}` : `${it.considered} listings checked, none identical`;
-      const net = it.netCents !== null && it.verdict !== 'unverified' ? (it.netCents >= 0 ? `Net +${money(it.netCents, it.currency)} after all costs` : `Resale would lose ${money(-it.netCents, it.currency)}`) : verdictLabel(it.verdict);
       caps.append(h('article', { class: `sc-card${i === 0 ? ' is-active' : ''}`, 'data-i': i },
-        h('img', { class: 'sc-img', src: thumbSrc(it.thumbnail)!, alt: '', width: 60, height: 95, loading: 'lazy' }),
+        h('img', { class: 'sc-img', src: it.src, alt: '', width: 60, height: 95, loading: 'lazy' }),
         h('div', { class: 'sc-meta' },
-          h('p', { class: 'sc-name' }, it.query),
-          it.identical ? h('p', { class: 'sc-ok' }, `✓ ${it.identical} identical of ${it.considered}`) : h('p', { class: 'sc-ok sc-no' }, '✗ Nothing provably the same'),
-          h('p', { class: 'sc-line' }, line),
-          h('p', { class: 'sc-net' }, net),
-          h('a', { class: 'sc-go', href: `/app/lots/view/?key=${it.key}` }, 'Open this product →'))));
+          h('p', { class: 'sc-name' }, it.name),
+          h('p', { class: `sc-ok${it.tagNo ? ' sc-no' : ''}` }, it.tag),
+          h('p', { class: 'sc-line' }, it.line),
+          h('p', { class: 'sc-net' }, it.net),
+          h('a', { class: 'sc-go', href: it.href }, it.go))));
     });
-    await startShowcase(root, { tiles: items.map((it, i) => ({ src: thumbSrc(it.thumbnail)!, rank: i + 1 })) });
+    await startShowcase(root, { tiles: items.map((it, i) => ({ src: it.src, rank: i + 1 })) });
   }).catch(() => root.classList.add('sc-static'));
 }
 </script>

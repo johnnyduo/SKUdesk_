@@ -21,7 +21,7 @@ A lot is one product and the <b>identical offers</b> the agent found for it. Ope
       h('p', { class: 'muted xs mono' }, `${r.identical} identical of ${r.considered} · ${r.series.length} price point${r.series.length === 1 ? '' : 's'}`))) : [h('p', { class: 'empty-state' }, 'No lots yet. Run a check on the Overview page.')]));
   }).catch(() => {});
 </script>
-<style>
+<style is:global>
 .lot{text-decoration:none;color:inherit;gap:var(--s2)}
 .lot:hover{border-color:var(--line-strong)}
 .lot h3{font-size:var(--fs-lg)}

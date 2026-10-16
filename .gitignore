@@ -6,7 +6,6 @@ node_modules/
 .DS_Store
 .cache/
 eval/last-run.json
-video/*.mp4
 deploy/last-url.txt
 web/dist/
 web/.astro/
@@ -14,9 +13,3 @@ web/.astro/
 .dev.vars
 .dev.vars.*
 .shots/
-video/pipeline/stills/
-video/pipeline/frames/
-video/pipeline/audio/
-video/pipeline/audio-seg/
-video/pipeline/*.wav
-video/pipeline/renderer-data.js

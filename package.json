@@ -12,10 +12,14 @@
     "eval": "node --env-file=.env eval/run.ts",
     "smoke": "node test/smoke.ts",
     "web:build": "npm --prefix web install && npm --prefix web run build",
-    "gcp-build": "npm --prefix web ci && npm --prefix web run build && rm -rf web/node_modules"
+    "gcp-build": "npm --prefix web ci && npm --prefix web run build && rm -rf web/node_modules",
+    "e2e": "node --test --test-timeout=120000 e2e/site.e2e.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.3.1",
     "@google/genai": "^2.30.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.58.0"
   }
 }

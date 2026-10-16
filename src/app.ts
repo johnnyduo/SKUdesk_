@@ -152,10 +152,18 @@ export function createApp(deps: AppDeps): Server {
       }
 
       if (req.method === 'GET' && path === '/api/products') {
-        const latest = latestPerProduct(await deps.store.list<Analysis>('analyses', 300));
-        const rows = await Promise.all(latest.map(async (a) => {
-          const h = await deps.store.get<{ points: HistoryPoint[] }>('history', productKey(a.query, a.market));
-          return { key: productKey(a.query, a.market), ...summary(a), series: (h?.points ?? []).slice(-30) };
+        const all = await deps.store.list<Analysis>('analyses', 300);
+        // A product's picture: the latest check that had one. A later check can find no identical offer, but the product still looks the same.
+        const thumbs = new Map<string, string>();
+        for (const a of all) {
+          const t = (a.buy ?? a.identical[0] ?? a.flagged?.[0])?.offer.thumbnail;
+          if (t && !thumbs.has(productKey(a.query, a.market))) thumbs.set(productKey(a.query, a.market), t);
+        }
+        const rows = await Promise.all(latestPerProduct(all).map(async (a) => {
+          const key = productKey(a.query, a.market);
+          const h = await deps.store.get<{ points: HistoryPoint[] }>('history', key);
+          const s = summary(a);
+          return { key, ...s, thumbnail: s.thumbnail ?? thumbs.get(key) ?? null, series: (h?.points ?? []).slice(-30) };
         }));
         return send(res, 200, rows);
       }

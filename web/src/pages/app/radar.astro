@@ -48,7 +48,7 @@ Cloud Scheduler wakes the agent once a day. It re-checks each watched product wi
   addEventListener('skudesk:owner', owner);
   setTimeout(owner, 600);
 </script>
-<style>
+<style is:global>
 .radar{position:relative;aspect-ratio:1;max-width:340px;margin:0 auto;border-radius:50%;border:1px solid var(--line);background:radial-gradient(circle,rgba(204,255,0,.06),transparent 70%);overflow:hidden}
 .radar::before,.radar::after{content:"";position:absolute;inset:16%;border-radius:50%;border:1px dashed var(--line-soft)}
 .radar::after{inset:34%}
