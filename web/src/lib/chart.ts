@@ -87,23 +87,28 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
     const n = series ? series.length : pts.length;
     const xOf = (i: number): number => pad.l + (series ? (i + 0.5) / n : i / (n - 1)) * (W - pad.l - pad.r);
 
-    // grid and price axis (right)
+    // grid and price axis (right); show cents when the range is tiny so the labels differ
+    const fine = hi - lo < 1000;
+    const axisMoney = (v: number): string => (fine ? money(v, cur) : money0(v, cur));
     const ticks = 5;
     for (let k = 0; k <= ticks; k++) {
       const v = lo + ((hi - lo) * k) / ticks;
       const y = yOf(v);
       svg.append(svgEl('line', { class: 'mk-grid', x1: pad.l, x2: W - pad.r, y1: y, y2: y }));
       const t = svgEl('text', { class: 'mk-ax', x: W - pad.r + 8, y: y + 4 });
-      t.textContent = money0(v, cur);
+      t.textContent = axisMoney(v);
       svg.append(t);
     }
     // time axis
+    const firstMs = series ? series[0].t0 : new Date(pts[0].t).getTime();
+    const lastMs = series ? series[n - 1].t1 : new Date(pts[n - 1].t).getTime();
+    const sameDay = lastMs - firstMs < 36 * 3600 * 1000;
     const labelCount = Math.min(5, n);
     for (let k = 0; k < labelCount; k++) {
       const i = Math.round((k * (n - 1)) / Math.max(labelCount - 1, 1));
       const ms = series ? series[i].t0 : new Date(pts[i].t).getTime();
       const t = svgEl('text', { class: 'mk-ax mk-ax-s', x: xOf(i), y: H - 6, 'text-anchor': k === 0 ? 'start' : k === labelCount - 1 ? 'end' : 'middle' });
-      t.textContent = fmtDay(ms);
+      t.textContent = sameDay ? new Date(ms).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : fmtDay(ms);
       svg.append(t);
     }
 
@@ -169,7 +174,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
     svg.append(svgEl('line', { class: 'mk-lastline', x1: pad.l, x2: W - pad.r, y1: ly, y2: ly }));
     svg.append(svgEl('rect', { class: up ? 'mk-tag-up' : 'mk-tag-dn', x: W - pad.r + 2, y: ly - 10, width: pad.r - 4, height: 20, rx: 4 }));
     const tg = svgEl('text', { class: 'mk-tagt', x: W - pad.r + 8, y: ly + 4 });
-    tg.textContent = money0(lastClose, cur);
+    tg.textContent = fine ? money(lastClose, cur) : money0(lastClose, cur);
     svg.append(tg);
     const lx = xsArr[xsArr.length - 1];
     svg.append(svgEl('circle', { class: 'mk-pulse', cx: lx, cy: ly, r: 4 }), svgEl('circle', { class: 'mk-lastdot', cx: lx, cy: ly, r: 3.5 }));
@@ -196,7 +201,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
       xhh.setAttribute('y1', String(y)); xhh.setAttribute('y2', String(y));
       xd.setAttribute('cx', String(x)); xd.setAttribute('cy', String(y));
       xt.setAttribute('y', String(y - 10)); xtt.setAttribute('y', String(y + 4));
-      xtt.textContent = money0(values[i], cur);
+      xtt.textContent = fine ? money(values[i], cur) : money0(values[i], cur);
       const it = geom.items[i];
       tip.replaceChildren(h('div', { class: 'mk-tip-h' }, it.label), ...it.rows.map(([k, v]) => h('div', { class: 'mk-tip-r' }, h('span', {}, k), h('b', {}, v))));
       tip.hidden = false;

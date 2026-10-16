@@ -313,7 +313,8 @@ export function mountTerminal(root: HTMLElement): void {
     const [r, ev, sc, lim] = await Promise.all([api<Row[]>('/api/products').catch(() => rows), api<any[]>('/api/events').catch(() => events), api<any[]>('/api/scans').catch(() => scans), api('/api/limits').catch(() => limits)]);
     rows = r.sort((x, y) => y.identical - x.identical || y.considered - x.considered);
     events = ev; scans = sc; limits = lim;
-    if (!selDevice && (!selKey || !rows.some((x) => x.key === selKey))) selKey = rows[0]?.key ?? '';
+    // Open on the product with the longest price history, so the chart has something to show.
+    if (!selDevice && (!selKey || !rows.some((x) => x.key === selKey))) selKey = [...rows].sort((x, y) => y.series.filter((p: any) => p.buyLandedCents !== null).length - x.series.filter((p: any) => p.buyLandedCents !== null).length || y.identical - x.identical)[0]?.key ?? '';
     await loadLot();
     paintAll();
   }
