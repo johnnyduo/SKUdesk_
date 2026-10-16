@@ -18,7 +18,7 @@ Live at https://skudesk.lol
 | Path | What it is |
 |---|---|
 | `src/` | The Node service: API, agent, identity gate, source adapters, storage |
-| `web/` | The Astro site (landing, desk, opportunities, lots, decisions, radar, approvals, replay, market, limits, owner console, metrics) |
+| `web/` | The Astro site (landing, desk, opportunities, approvals, replay, market, watchlist, limits, resale listings, owner console, metrics, deployment) |
 | `eval/` | 60 hand-labelled product pairs (phones, LEGO sets, accessories) and the script that runs them against Gemini |
 | `edge/` | The Cloudflare Worker in front of skudesk.lol |
 | `deploy/` | Scripts for Cloud Run, Firestore, Scheduler and Secret Manager |
@@ -54,7 +54,7 @@ The kill switch stops scans, new proposals and approvals. A proposal above the p
 - **Bids** are what four buyer policies could pay. Each one is the live agent's cost model with a different margin floor (twice the owner's floor, the floor itself, half of it, break-even). A bid is the highest landed price that still clears its floor after fees, returns and postage when the item is resold at the next cheapest identical price.
 - **A deal needs a bid at or above the best ask.** Most of the time none reaches it, because costs take about 15% of a resale. When one does, the page says which, and whether the live agent's own floor is cleared. A buy only ever becomes a proposal that a person approves.
 - The chart is the history of the cheapest identical landed price, one point per check. The daily scan and every check run from the page add a point, so it fills in over days.
-- The products without a check yet (iPhone, AirPods, Switch, MacBook, Watch, Galaxy, PS5, a phone case) are shown as 3D models with their list price. A checked product is shown as its best offer's photo with the background removed, and it turns in 3D too.
+- Products without a check yet (AirPods, Switch, MacBook, Watch, Galaxy, PS5, a phone case) are 3D previews with no price until a check has run. A checked product is shown as its best offer's photo with the background removed, and it turns in 3D too.
 
 ## Resale listings
 

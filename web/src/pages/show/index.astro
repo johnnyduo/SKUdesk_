@@ -18,9 +18,11 @@ This replays a <b>real, stored check</b> line by line: the search, Gemini's verd
   const pick = document.getElementById('pick') as HTMLSelectElement;
   const player = document.getElementById('player')!;
   const load = (id: string) => api(`/api/analyses/${id}`).then((a) => mountPlayer(player, a)).catch(() => player.replaceChildren(h('div', { class: 'alert' }, 'Could not load that check.')));
-  api('/api/analyses?n=40').then((rows: any[]) => {
+  api('/api/products').then((rows: any[]) => {
+    // one entry per product, the one with something to show first
+    rows.sort((x, y) => Number(Boolean(y.buy)) - Number(Boolean(x.buy)) || y.identical - x.identical);
     if (!rows.length) { player.replaceChildren(h('p', { class: 'empty-state' }, 'No checks yet. Run one on the desk first.')); return; }
-    pick.replaceChildren(...rows.map((r) => h('option', { value: r.id }, `${r.query} · ${when(r.createdAt)}`)));
+    pick.replaceChildren(...rows.map((r) => h('option', { value: r.id }, `${r.query} · ${r.identical ? `${r.identical} identical` : 'none identical'} · ${when(r.createdAt)}`)));
     const want = new URLSearchParams(location.search).get('id');
     if (want && rows.some((r) => r.id === want)) pick.value = want;
     pick.addEventListener('change', () => void load(pick.value));

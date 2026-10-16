@@ -254,3 +254,19 @@ test('the owner can take a product off the desk; its checks, history and pending
   void a;
   s.close();
 });
+
+test('the owner can remove one check; its pending proposal and its price point go with it', async () => {
+  const s = await serve();
+  const a = await (await s.post('/api/analyze', { query: 'LEGO SET 1', market: 'us' })).json();
+  const del = (headers: Record<string, string> = {}) => fetch(`${s.base}/api/analyses/${a.id}`, { method: 'DELETE', headers });
+  assert.equal((await del()).status, 401);
+  assert.equal((await fetch(`${s.base}/api/products`).then((r) => r.json()))[0].series.length, 1);
+  const r = await (await del(OWNER)).json();
+  assert.equal(r.removed, a.id);
+  assert.equal(r.proposals, 1);
+  assert.equal((await fetch(`${s.base}/api/analyses/${a.id}`)).status, 404);
+  assert.deepEqual(await (await fetch(`${s.base}/api/products`)).json(), []);
+  assert.equal((await (await fetch(`${s.base}/api/proposals`)).json()).length, 0);
+  assert.equal((await del(OWNER)).status, 404);
+  s.close();
+});

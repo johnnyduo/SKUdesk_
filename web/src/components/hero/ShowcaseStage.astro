@@ -48,10 +48,9 @@ type Item = { key: string; src: string; name: string; tag: string; tagNo: boolea
 
 const root = document.querySelector<HTMLElement>('.sc');
 if (root) {
-  const fmt = (c: number) => money(c);
   const fromDevice = (symbol: string): Item => {
     const d = DEVICES.find((x) => x.symbol === symbol)!;
-    return { key: d.symbol, src: d.art, name: d.name, tag: 'Reference product', tagNo: true, line: deviceLine(d, fmt), net: 'Run a check to see live offers', href: `/app/?q=${encodeURIComponent(d.query)}`, go: 'Check this product →' };
+    return { key: d.symbol, src: d.art, name: d.name, tag: 'Not checked yet', tagNo: true, line: deviceLine(d), net: 'Run a check to see live offers', href: `/app/?q=${encodeURIComponent(d.query)}`, go: 'Check this product →' };
   };
   api<any[]>('/api/products').catch(() => [] as any[]).then(async (rows) => {
     const real: Item[] = rows.filter((r) => r.thumbnail).map((it) => {

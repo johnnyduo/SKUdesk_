@@ -195,7 +195,7 @@ describe('the site, end to end', () => {
     assert.ok(await market.page.locator('.mk-al .mk-ar').count() >= 9, 'checked products plus reference products are listed');
     await market.page.locator('.mk-al').nth(1).locator('.mk-ar').first().click();
     await market.page.waitForSelector('.p3d');
-    assert.match(await market.page.locator('.mk-stats').textContent() ?? '', /List price/);
+    assert.match(await market.page.locator('.mk-stats').textContent() ?? '', /not checked/);
     await market.page.context().close();
 
     const show = await open('/show/');
@@ -342,8 +342,8 @@ describe('the site, end to end', () => {
     assert.ok(await page.locator('.mk-pk-btn').isVisible());
     await page.locator('.mk-pk-btn').click();
     assert.ok(await page.locator('.mk-pk-list').isVisible());
-    await page.locator('.mk-pk-o[data-symbol="APP3"]').click();
-    await page.waitForFunction(() => /APP3/.test(document.querySelector('.mk-stats .mk-id')?.textContent ?? ''));
+    await page.locator('.mk-pk-o[data-symbol="APP2"]').click();
+    await page.waitForFunction(() => /APP2/.test(document.querySelector('.mk-stats .mk-id')?.textContent ?? ''));
     await page.locator('.mk-pk-btn').click();
     await page.locator('.mk-pk-o').first().click();
     await page.getByRole('tab', { name: 'Book' }).click();

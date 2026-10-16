@@ -172,6 +172,23 @@ export function createApp(deps: AppDeps): Server {
         return send(res, 200, (await deps.store.list<Analysis>('analyses', n)).map(summary));
       }
       const one = path.match(/^\/api\/analyses\/([\w-]{3,40})$/);
+      // Owner only: remove one check with its pending proposal and its point on the price history. The smoke test uses this to leave no trace.
+      if (req.method === 'DELETE' && one) {
+        if (!owner) return send(res, 401, { error: 'unauthorized' });
+        if (ownerMin.hit(`o:${ip}`)) return send(res, 429, { error: 'Too many requests.' });
+        const a = await deps.store.get<Analysis>('analyses', one[1]);
+        if (!a) return send(res, 404, { error: 'not found' });
+        await deps.store.delete('analyses', a.id);
+        let proposals = 0;
+        for (const p of await deps.store.list<Proposal>('proposals', 300)) if (p.analysisId === a.id && p.status === 'pending') { await deps.store.delete('proposals', p.id); proposals++; }
+        const key = productKey(a.query, a.market);
+        const h = await deps.store.get<{ points: HistoryPoint[] }>('history', key);
+        if (h) {
+          const points = h.points.filter((x) => x.t !== a.createdAt);
+          if (points.length) await deps.store.set('history', key, { ...h, points }); else await deps.store.delete('history', key);
+        }
+        return send(res, 200, { removed: a.id, proposals });
+      }
       if (req.method === 'GET' && one) {
         const a = await deps.store.get<Analysis>('analyses', one[1]);
         return a ? send(res, 200, { ...a, productKey: productKey(a.query, a.market) }) : send(res, 404, { error: 'not found' });

@@ -1,6 +1,7 @@
 import { $, api, h, int, money, safeLink, thumbSrc, verdictLabel, when } from './client.ts';
 import { createChart, type Pt } from './chart.ts';
 import { DEVICES, deviceLine, type Device } from './devices.ts';
+import { JOURNEY } from './journey.ts';
 import { createViewer, type Viewer } from './product3d.ts';
 import { approvalPanel } from './analysis-view.ts';
 import { createRunPanel, streamAnalysis } from './run-panel.ts';
@@ -99,7 +100,7 @@ export function mountTerminal(root: HTMLElement): void {
 
   const top = h('header', { class: 'mk-top' },
     h('a', { class: 'mk-brand', href: '/', 'aria-label': 'SKUdesk home' }, h('span', { class: 'logo-mark' }, '▲'), h('b', {}, 'SKUdesk')),
-    h('nav', { class: 'mk-links', 'aria-label': 'Site' }, h('a', { href: '/app/' }, '1 Desk'), h('a', { href: '/show/' }, '2 Agent decision'), h('a', { href: '/app/create/' }, 'Next: 4 Deploy agent →')),
+    h('nav', { class: 'mk-links', 'aria-label': 'Steps' }, JOURNEY.map((j) => h('a', { href: j.href, 'aria-current': j.href === '/market/' ? 'page' : undefined, class: j.href === '/market/' ? 'on' : '' }, `${j.n} ${j.label}`))),
     h('span', { class: 'mk-sp' }), el.live,
     h('button', { type: 'button', class: 'mk-q', 'aria-label': 'How this market works', on: { click: () => { el.help.hidden = false; } } }, '?'));
   top.querySelector('.logo-mark')!.innerHTML = '<svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M8 22 16 8l8 14" stroke="#CCFF00" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -111,11 +112,11 @@ export function mountTerminal(root: HTMLElement): void {
   const body = h('div', { class: 'mk-body' },
     h('div', { class: 'mk-col mk-col-l' }, el.p3d, el.facts,
       h('section', { class: 'mk-panel', 'data-panel': 'assets', 'aria-label': 'Checked products' }, h('div', { class: 'mk-ph' }, h('h2', {}, 'Checked products')), el.list,
-        h('div', { class: 'mk-ph' }, h('h2', {}, 'Reference products')), el.devices)),
+        h('div', { class: 'mk-ph' }, h('h2', {}, '3D previews')), el.devices)),
     h('div', { class: 'mk-col mk-col-c' }, el.stats, el.chartp, el.recent),
     h('div', { class: 'mk-col mk-col-r' }, el.clock, el.book, el.tape));
 
-  const foot = h('footer', { class: 'mk-foot-bar' }, h('span', {}, 'Prices are asking prices from Google Shopping, not retail prices and not sold prices.'), h('a', { href: '/app/' }, 'Desk'), h('a', { href: '/show/' }, 'Agent decision'), h('a', { href: '/app/create/' }, 'Next: Deploy agent'));
+  const foot = h('footer', { class: 'mk-foot-bar' }, h('span', {}, 'Prices are asking prices from Google Shopping, not retail prices and not sold prices.'), ...JOURNEY.map((j) => h('a', { href: j.href }, j.label)));
   el.help.append(h('div', { class: 'mk-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'How this market works' },
     h('div', { class: 'mk-dialog-h' }, h('h2', {}, 'How this market works'), h('button', { type: 'button', class: 'mk-x', 'aria-label': 'Close', on: { click: () => { el.help.hidden = true; } } }, '×')),
     h('p', { class: 'mk-dialog-lead' }, 'This is not an exchange. It is a view of ', h('b', {}, 'identical offers'), ' for each product, with the history of the cheapest one.'),
@@ -139,7 +140,7 @@ export function mountTerminal(root: HTMLElement): void {
       const dir = ch ? dirOf(ch.pct) : 'flat';
       return mkRow(r.key, code(r.query), r.query, r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', ch ? pctStr(ch.pct) : '-', r.series.map((p: any) => p.buyLandedCents), dir, r.key === selKey && !selDevice, () => selectProduct(r.key));
     }) : [h('p', { class: 'mk-none' }, 'No products yet. Run a check on the desk.')]));
-    el.devices.replaceChildren(...DEVICES.map((d) => mkRow(d.symbol, d.symbol, d.name, money(d.listCents), 'list', [], 'flat', selDevice?.symbol === d.symbol, () => selectDevice(d))));
+    el.devices.replaceChildren(...DEVICES.map((d) => mkRow(d.symbol, d.symbol, d.name, 'not checked', '-', [], 'flat', selDevice?.symbol === d.symbol, () => selectDevice(d))));
   }
 
   let photo: PhotoViewer | null = null;
@@ -173,7 +174,7 @@ export function mountTerminal(root: HTMLElement): void {
   function paintPicker(): void {
     const items: PickItem[] = [
       ...rows.map((r): PickItem => { const ch = changeOf(r.series); return { id: r.key, symbol: code(r.query), name: r.query, sub: `${r.market.toUpperCase()} · ${r.identical}/${r.considered} identical`, price: r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', change: ch ? pctStr(ch.pct) : '-', dir: ch ? dirOf(ch.pct) : 'flat', group: 'Checked products' }; }),
-      ...DEVICES.map((d): PickItem => ({ id: d.symbol, symbol: d.symbol, name: d.name, sub: d.category, price: money(d.listCents), change: 'list', dir: 'flat', group: 'Reference products' })),
+      ...DEVICES.map((d): PickItem => ({ id: d.symbol, symbol: d.symbol, name: d.name, sub: d.category, price: 'not checked', change: '-', dir: 'flat', group: '3D previews' })),
     ];
     picker.set(items, curId());
   }
@@ -182,8 +183,8 @@ export function mountTerminal(root: HTMLElement): void {
     const a = lot?.analysis;
     const pf = (items: [string, string | Node][]): HTMLElement => h('dl', { class: 'mk-pf' }, items.map(([k, v]) => h('div', {}, h('dt', {}, k), h('dd', {}, v))));
     if (selDevice) {
-      el.facts.replaceChildren(h('div', { class: 'mk-ph' }, h('h2', {}, 'Facts')), pf([['Category', selDevice.category], ['US list price', money(selDevice.listCents)], ['Model', 'generic silhouette']]),
-        h('p', { class: 'mk-pf-n' }, 'A reference product with no live check yet. The list price is a reference, not a quote.'));
+      el.facts.replaceChildren(h('div', { class: 'mk-ph' }, h('h2', {}, 'Facts')), pf([['Category', selDevice.category], ['Checked', 'not yet'], ['Model', '3D preview']]),
+        h('p', { class: 'mk-pf-n' }, 'No check has run on this product, so there is no price to show. Run one to see real offers.'));
       return;
     }
     if (!a) { el.facts.replaceChildren(h('div', { class: 'mk-ph' }, h('h2', {}, 'Facts')), h('p', { class: 'mk-none' }, 'Select a product.')); return; }
@@ -197,7 +198,7 @@ export function mountTerminal(root: HTMLElement): void {
     const cc = cur();
     if (selDevice) {
       el.stats.replaceChildren(h('div', { class: 'mk-id' }, h('h2', {}, h('i', { class: 'mk-sw' }), selDevice.symbol), h('span', { class: 'mk-nm' }, selDevice.name)),
-        h('div', { class: 'mk-stat mk-last' }, h('span', { class: 'mk-k' }, 'List price'), h('b', { class: 'mk-v n' }, money(selDevice.listCents)), h('span', { class: 'mk-sub' }, 'reference, not a quote')),
+        h('div', { class: 'mk-stat mk-last' }, h('span', { class: 'mk-k' }, 'Cheapest landed'), h('b', { class: 'mk-v mk-none-v' }, 'not checked'), h('span', { class: 'mk-sub' }, 'run a check for real offers')),
         ...['Change', 'High', 'Low', 'Identical', 'Checks'].map((k) => h('div', { class: 'mk-stat' }, h('span', { class: 'mk-k' }, k), h('b', { class: 'mk-v mk-none-v' }, '-'), h('span', { class: 'mk-sub' }, 'no check yet'))));
       return;
     }

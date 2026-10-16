@@ -26,7 +26,7 @@ export function createViewer(initial: Device, accent = '#CCFF00'): Viewer {
         onRotation: () => {}, onLost: () => stage.querySelector('.p3d-art')?.removeAttribute('hidden'), onRestored: () => {},
         onModified: (m: boolean) => { reset.hidden = !m; },
       });
-      api.setProduct(sp.specForSymbol(current.symbol), accent);
+      api.setProduct(sp.specForSymbol(current.model), accent);
       stage.querySelector('.p3d-art')?.remove();
       stage.querySelector('canvas')?.setAttribute('aria-label', `Rotatable 3D model of ${current.name}. Drag or use arrow keys to rotate, plus and minus to zoom, 0 to reset.`);
     } catch { /* no WebGL: the flat illustration stays */ }
@@ -45,7 +45,7 @@ export function createViewer(initial: Device, accent = '#CCFF00'): Viewer {
       name.textContent = d.name; sub.textContent = d.sub ?? d.category;
       root.setAttribute('aria-label', `${d.name}: 3D product viewer`); root.dataset.model = d.symbol;
       (root.querySelector('.p3d-sym') as HTMLElement).textContent = d.symbol;
-      if (api && specs) api.setProduct(specs.specForSymbol(d.symbol), accent);
+      if (api && specs) api.setProduct(specs.specForSymbol(d.model), accent);
     },
     dispose() { dead = true; api?.dispose(); },
   };

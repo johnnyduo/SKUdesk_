@@ -1,8 +1,10 @@
 // Smoke test against a DEPLOYED SKUdesk: real Cloud Run, real Firestore, real Gemini, real SerpApi.
 // Usage: npm run smoke -- https://your-service-url [query]
-// It spends at most one search (none if the query was already searched in the last 12 hours).
+// The real analysis step runs only when OWNER_KEY is in the environment, because it removes what it created (two checks and their
+// proposals) so a smoke run never leaves anything on the desk. Use a product that was searched in the last 12 hours to spend no search.
 const base = (process.argv[2] ?? '').replace(/\/$/, '');
-const query = process.argv[3] ?? 'LEGO 10294 Titanic';
+const query = process.argv[3] ?? 'Apple iPhone 16 128GB';
+const ownerKey = process.env.OWNER_KEY ?? '';
 if (!base) {
   console.error('usage: npm run smoke -- <service-url> [query]');
   process.exit(2);
@@ -55,28 +57,37 @@ check('the image proxy refuses hosts that are not allow-listed', img.status === 
 const scan = await json('/api/jobs/scan', { method: 'POST' });
 check('scan endpoint refuses callers without the secret', scan.status === 401);
 
-const res = await json('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query, market: 'us' }) });
-const a = res.body;
-const streamRes = await fetch(base + '/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson' }, body: JSON.stringify({ query, market: 'us' }) });
-const events = (await streamRes.text()).trim().split('\n').map((l) => JSON.parse(l));
-check('analysis streams progress and ends with a result', streamRes.status === 200 && events[0]?.type === 'search' && events.some((e) => e.type === 'gate') && events.at(-1)?.type === 'done', events.map((e) => e.type).filter((t, i, arr) => arr.indexOf(t) === i).join(' > '));
-check('analysis completes', res.status === 200 && typeof a.headline === 'string', res.status === 200 ? a.headline : String(a.error));
-if (res.status === 200) {
-  check('every listing was put through the Identity Engine', a.gate.considered > 0 && a.gate.considered === a.gate.identical + a.gate.different + a.gate.uncertain, JSON.stringify(a.gate));
-  check('money is integer cents', [a.buy?.landedCents, a.sell?.listAtCents].filter((v) => v !== undefined && v !== null).every(Number.isInteger));
-  check('a buy always files a pending proposal, never a purchase', a.buy ? Boolean(a.proposalId) : a.proposalId === null);
-  if (a.proposalId) {
-    const list = await json('/api/proposals');
-    const p = (list.body as unknown as { id: string; status: string }[]).find((x) => x.id === a.proposalId);
-    check('the proposal is stored and not yet decided', Boolean(p) && ['pending', 'approved', 'rejected'].includes(p!.status), p?.status);
+if (!ownerKey) console.log('SKIP  real analysis (set OWNER_KEY so the run can clean up after itself)');
+else {
+  const res = await json('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query, market: 'us' }) });
+  const a = res.body;
+  const streamRes = await fetch(base + '/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson' }, body: JSON.stringify({ query, market: 'us' }) });
+  const events = (await streamRes.text()).trim().split('\n').map((l) => JSON.parse(l));
+  check('analysis streams progress and ends with a result', streamRes.status === 200 && events[0]?.type === 'search' && events.some((e) => e.type === 'gate') && events.at(-1)?.type === 'done', events.map((e) => e.type).filter((t, i, arr) => arr.indexOf(t) === i).join(' > '));
+  check('analysis completes', res.status === 200 && typeof a.headline === 'string', res.status === 200 ? a.headline : String(a.error));
+  if (res.status === 200) {
+    check('every listing was put through the Identity Engine', a.gate.considered > 0 && a.gate.considered === a.gate.identical + a.gate.different + a.gate.uncertain, JSON.stringify(a.gate));
+    check('money is integer cents', [a.buy?.landedCents, a.sell?.listAtCents].filter((v) => v !== undefined && v !== null).every(Number.isInteger));
+    check('a buy always files a pending proposal, never a purchase', a.buy ? Boolean(a.proposalId) : a.proposalId === null);
+    if (a.proposalId) {
+      const list = await json('/api/proposals');
+      const p = (list.body as unknown as { id: string; status: string }[]).find((x) => x.id === a.proposalId);
+      check('the proposal is stored and not yet decided', Boolean(p) && ['pending', 'approved', 'rejected'].includes(p!.status), p?.status);
+    }
+    if (a.proposalId) {
+      const noToken = await json(`/api/proposals/${a.proposalId}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: 'approved' }) });
+      check('a decision without the requester token is refused', noToken.status === 403);
+    }
+    check('the public result never names the model', !JSON.stringify(a).match(/gemini-\d/i));
+    const again = await json(`/api/analyses/${a.id}`);
+    check('the analysis is stored in Firestore and readable', again.status === 200 && again.body.id === a.id);
   }
-  if (a.proposalId) {
-    const noToken = await json(`/api/proposals/${a.proposalId}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: 'approved' }) });
-    check('a decision without the requester token is refused', noToken.status === 403);
-  }
-  check('the public result never names the model', !JSON.stringify(a).match(/gemini-\d/i));
-  const again = await json(`/api/analyses/${a.id}`);
-  check('the analysis is stored in Firestore and readable', again.status === 200 && again.body.id === a.id);
+
+  // leave nothing behind: both checks, their proposals and their points on the history
+  const made = [a?.id, events.at(-1)?.analysis?.id].filter((x): x is string => typeof x === 'string');
+  let removed = 0;
+  for (const id of made) if ((await fetch(`${base}/api/analyses/${id}`, { method: 'DELETE', headers: { 'x-skudesk-owner': ownerKey } })).status === 200) removed++;
+  check('the smoke run removed what it created', removed === made.length, `${removed} of ${made.length}`);
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks passed');

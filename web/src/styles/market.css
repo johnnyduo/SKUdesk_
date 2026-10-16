@@ -375,3 +375,7 @@
 @media (max-width:699px){.mk-bkh,.mk-bk,.mk-bid{grid-template-columns:72px minmax(0,1fr) 54px 70px}}
 .mk-tr.fresh{animation:mk-flash 1.8s ease-out}
 @media (prefers-reduced-motion:reduce){.mk-tr.fresh{animation:none}}
+
+.mk-links a.on{color:var(--neon);background:rgba(204,255,0,.08)}
+@media (max-width:1250px){.mk-links a{padding:0 7px;font-size:12px}}
+.mk-links{min-width:0;overflow-x:auto;scrollbar-width:none}
