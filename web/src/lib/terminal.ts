@@ -276,7 +276,7 @@ export function mountTerminal(root: HTMLElement): void {
       depth.style.width = `${flag ? 100 : ((i + 1) / Math.max(1, sorted.length)) * 100}%`;
       return h('div', { class: `mk-tr mk-bk${i === 0 && !flag ? ' best' : ''}${flag ? ' flag' : ''}` },
         h('span', { class: `n ${flag ? 'dn' : 'sell'}` }, money(p.landedCents, cc)),
-        h('span', { class: 'mk-who', title: `${p.offer.title} (via ${providerOf(p.offer.origin)})` }, p.offer.url ? safeLink(p.offer.url, p.offer.seller) : p.offer.seller, h('small', {}, providerOf(p.offer.origin))),
+        h('span', { class: 'mk-who', title: `${p.offer.title} (via ${providerOf(p.offer.origin)})` }, p.offer.url ? safeLink(p.offer.url, p.offer.seller) : p.offer.seller, providerOf(p.offer.origin) === 'Google Shopping' ? null : h('small', {}, providerOf(p.offer.origin))),
         flag ? h('span', { class: 'n mk-vs dn' }, 'bad price') : vsText(p.landedCents),
         h('span', { class: 'mk-depth', 'aria-hidden': 'true' }, depth));
     };
@@ -312,7 +312,7 @@ export function mountTerminal(root: HTMLElement): void {
     el.book.replaceChildren(
       h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book'), h('span', { class: 'mk-ph-r' }, code(a.query))),
       h('div', { class: 'mk-th mk-bkh' }, h('span', {}, 'Landed'), h('span', {}, 'Seller'), h('span', {}, 'vs avg'), h('span', {}, 'Depth')),
-      h('div', { class: 'mk-sidehead' }, 'Asks: what sellers want'),
+      h('div', { class: 'mk-sidehead' }, 'Asks: what sellers want, via Google Shopping'),
       h('div', { class: 'mk-tbody mk-asks' }, askRows.length ? askRows : [h('p', { class: 'mk-none' }, 'No offer passed the identity gate. The gate would rather say no than guess.')]),
       h('div', { class: 'mk-spread', 'data-testid': 'spread' }, h('span', {}, 'Average ', h('b', { class: 'n' }, avg === null ? '-' : money(avg, cc))), h('span', {}, 'Best ask ', h('b', { class: 'n' }, best ? money(best.landedCents, cc) : '-')), h('span', {}, 'Top bid ', h('b', { class: 'n' }, topBid === null ? '-' : money(topBid, cc))), h('span', {}, 'Gap ', h('b', { class: 'n' }, spread === null ? '-' : `${spread.toFixed(1)}%`))),
       h('div', { class: 'mk-sidehead' }, 'Bids: what each agent will pay'),
