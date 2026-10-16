@@ -141,7 +141,7 @@ describe('the site, end to end', () => {
     assert.match(lots.page.url(), /lots\/view\/\?key=/);
     await lots.page.context().close();
 
-    const market = await open('/market/?view=real');
+    const market = await open('/market/');
     await market.page.waitForSelector('.mk-al .mk-ar');
     await market.page.waitForSelector('.mk-bk');
     assert.ok(await market.page.locator('.mk-bk.flag').count() >= 1, 'the bait price is flagged in the offer book');
@@ -214,7 +214,7 @@ describe('the site, end to end', () => {
     await ctx.close();
   });
 
-  test('the limits page saves a new limit for the owner and the simulator answers for anyone', async () => {
+  test('the limits page saves a new limit for the owner and the what-if calculator answers for anyone', async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript((k) => sessionStorage.setItem('skudesk.owner', k), OWNER);
     const { page } = await open('/app/policies/', ctx);
@@ -250,80 +250,64 @@ describe('the site, end to end', () => {
     await page.waitForFunction(() => /Saved/.test(document.getElementById('msg')!.textContent ?? ''));
     await ctx.close();
   });
-  test('market practice rounds: labelled simulated, the chart moves every round, products switch from a dropdown', async () => {
+  test('market: the dropdown switches products, the book shows asks, the spread and each agent\'s bid', async () => {
+    await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'LEGO 10294 Titanic', market: 'us' }) })).text();
     const { page, errors } = await open('/market/');
-    await page.waitForSelector('.mk-stats .mk-last');
-    assert.match(await page.locator('.mk-pill').textContent() ?? '', /Simulated/i, 'the page says the practice market is simulated');
-    assert.match(await page.locator('.mk-stats').textContent() ?? '', /Simulated\./);
-    assert.match(await page.locator('.mk-live').textContent() ?? '', /Simulated/);
-    assert.ok(await page.locator('.mk-svg polyline.mk-line').count() === 1, 'a price line is drawn');
-    assert.ok(await page.locator('.mk-svg polygon.mk-mark-buy, .mk-svg polygon.mk-mark-sell, .mk-svg .mk-vup').count() > 0);
+    await page.waitForSelector('.mk-bk');
+    assert.doesNotMatch(await page.locator('body').textContent() ?? '', /simulat|mock|practice/i, 'the market page has no made-up data to label');
 
-    // four agents with their own rules, and a tape of rounds
-    assert.equal(await page.locator('[data-testid=agent-desk] tbody tr').count(), 4);
-    assert.ok(await page.locator('[data-testid=tape] .mk-ev').count() >= 10);
+    // asks: dearest first, best ask next to the spread, the bait price set aside
+    assert.ok(await page.locator('.mk-asks .mk-bk').count() === 2, 'two identical offers');
+    assert.equal(await page.locator('.mk-bk.best').count(), 1);
+    assert.ok(await page.locator('.mk-bk.flag').count() >= 1, 'the bait price is set aside');
+    const asks = (await page.locator('.mk-asks .mk-bk > .n.sell').allTextContents()).map((t) => Number(t.replace(/[^0-9.]/g, '')));
+    assert.deepEqual(asks, [...asks].sort((x, y) => y - x), 'asks are listed dearest first');
+    assert.ok(await page.locator('.mk-bk .mk-vs').first().textContent());
 
-    // the round advances on its own: the clock label, the tape and the last price move
-    const label = async (): Promise<string> => (await page.locator('.mk-clockp .mk-ph-r').textContent()) ?? '';
-    const before = await label();
-    const tapeBefore = await page.locator('[data-testid=tape] .mk-ev').first().textContent();
-    await page.waitForFunction((b) => document.querySelector('.mk-clockp .mk-ph-r')?.textContent !== b, before, { timeout: 15000 });
-    await page.waitForFunction((t) => document.querySelector('[data-testid=tape] .mk-ev')?.textContent !== t, tapeBefore, { timeout: 5000 });
+    // the spread line and four bids, highest first, every bid below the best ask
+    const spread = (await page.locator('[data-testid=spread]').textContent()) ?? '';
+    assert.match(spread, /Average.*Best ask.*Top bid.*Gap/s);
+    const bids = (await page.locator('[data-testid=bids] .mk-bid > .n.buy').allTextContents()).map((t) => Number(t.replace(/[^0-9.]/g, '')));
+    assert.equal(bids.length, 4);
+    assert.deepEqual(bids, [...bids].sort((x, y) => y - x));
+    assert.ok(bids.every((b) => b < Math.min(...asks)), 'with a 2-seller book no bid reaches the best ask');
+    assert.deepEqual(await page.locator('[data-testid=bids] .mk-bid').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.agent)), ['scout', 'sniper', 'live', 'patient']);
+    assert.match(await page.locator('.mk-bk-verdict').textContent() ?? '', /No bid reaches the best ask/);
 
     // the dropdown lists checked and reference products and switches everything
     await page.locator('[data-testid=product-picker]').click();
-    const options = await page.locator('.mk-pk-o').count();
-    assert.ok(options >= 9, `dropdown lists every product (${options})`);
-    const priceBefore = await page.locator('.mk-stats .mk-last .mk-v').textContent();
+    assert.ok(await page.locator('.mk-pk-o').count() >= 9);
     await page.locator('.mk-pk-o[data-symbol="PS5"]').click();
     await page.waitForFunction(() => /PS5/.test(document.querySelector('.mk-stats .mk-id')?.textContent ?? ''));
-    assert.notEqual(await page.locator('.mk-stats .mk-last .mk-v').textContent(), priceBefore);
     assert.match(page.url(), /device=PS5/);
     assert.match(await page.locator('.mk-pk-btn').textContent() ?? '', /PlayStation 5/);
-    await page.waitForSelector('.p3d');
-
-    // keyboard: open, arrow down, enter
+    await page.waitForSelector('.mk-p3d canvas', { timeout: 15000 });
     await page.locator('[data-testid=product-picker]').focus();
-    await page.keyboard.press('ArrowUp'); // opens on the selected product
+    await page.keyboard.press('ArrowUp');
     await page.keyboard.press('ArrowUp');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => !/PS5/.test(document.querySelector('.mk-stats .mk-id')?.textContent ?? ''));
-
-    // each product has its own character
-    const facts = async (sym: string): Promise<string> => { await page.locator('[data-testid=product-picker]').click(); await page.locator(`.mk-pk-o[data-symbol="${sym}"]`).click(); await page.waitForFunction((x) => document.querySelector('.mk-stats .mk-id')?.textContent?.includes(x), sym); return (await page.locator('.mk-panel[aria-label="Product facts"]').textContent()) ?? ''; };
-    const a = await facts('IP16P-CLR'), b = await facts('MBA13');
-    assert.notEqual(a, b);
-
-    // range and chart type
-    await page.getByRole('button', { name: '1h' }).click();
-    assert.match(await page.locator('.mk-stats').textContent() ?? '', /over 1h/);
-    await page.getByRole('button', { name: 'Daily candles' }).click();
-    assert.ok(await page.locator('.mk-svg g.mk-up, .mk-svg g.mk-dn').count() >= 10, 'candles are drawn');
-    await page.locator('.mk-chart').hover({ position: { x: 300, y: 120 } });
-    await page.waitForSelector('.mk-tip:not([hidden])');
-
-    // the other tab keeps the real data, and the practice tab points to it
-    await page.getByRole('button', { name: 'Real checks and live buy ticket' }).click();
-    await page.waitForSelector('.mk-tkt .mk-btn-pri');
-    assert.match(page.url(), /view=real/);
-    assert.match(await page.locator('.mk-pill').textContent() ?? '', /Asking prices/);
+    await page.locator('[data-testid=product-picker]').click();
+    await page.locator('.mk-pk-o[data-symbol="10294"]').click();
+    await page.waitForSelector('.mk-bk.best');
     assert.deepEqual(errors, []);
     await page.context().close();
   });
 
-  test('market on a phone: dropdown, view switch and range fit without sideways scrolling', async () => {
+  test('market on a phone: dropdown and book fit without sideways scrolling', async () => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const { page, errors } = await open('/market/', ctx);
     await page.waitForSelector('.mk-stats .mk-last');
     assert.ok(await page.locator('.mk-pk-btn').isVisible());
-    assert.ok(await page.locator('.mk-viewseg').isVisible());
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'no horizontal scroll');
     await page.locator('.mk-pk-btn').click();
     assert.ok(await page.locator('.mk-pk-list').isVisible());
     await page.locator('.mk-pk-o[data-symbol="APP3"]').click();
     await page.waitForFunction(() => /APP3/.test(document.querySelector('.mk-stats .mk-id')?.textContent ?? ''));
-    await page.getByRole('tab', { name: 'Trades' }).click();
-    assert.ok(await page.locator('[data-testid=tape]').isVisible());
+    await page.locator('.mk-pk-btn').click();
+    await page.locator('.mk-pk-o').first().click();
+    await page.getByRole('tab', { name: 'Book' }).click();
+    await page.waitForSelector('[data-testid=bids]');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'no horizontal scroll');
     assert.deepEqual(errors, []);
     await ctx.close();
   });

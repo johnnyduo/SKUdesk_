@@ -47,9 +47,13 @@ The kill switch stops scans, new proposals and approvals. A proposal above the p
 
 ## Market page
 
-`/market/` has two views. **Real checks** shows only stored data: the identical offers of each checked product, the history of the cheapest one, and a buy ticket that files a proposal for a person to approve.
+`/market/` shows one product at a time, picked from a dropdown. Everything on it comes from stored checks.
 
-**Practice rounds** is a simulation and says so on the page. A new round starts every 6 seconds. Each product has its own pace, number of sellers and how often a cheap listing shows up, and the book is built around the latest real price (or a list price for the reference products). Four paper agents with different margin floors and holding times trade it with the same cost maths as the live agent, so most rounds end in an honest pass. The rounds are a pure function of the product and the clock, so every visitor sees the same chart. It is there to show how the agent decides, not to quote prices.
+- **Asks** are the identical offers sellers want, dearest first, with the best ask next to the spread and each price shown against the average of the identical offers. Offers that matched the product but have a price nobody can believe are listed separately.
+- **Bids** are what four buyer policies could pay. Each one is the live agent's cost model with a different margin floor (twice the owner's floor, the floor itself, half of it, break-even). A bid is the highest landed price that still clears its floor after fees, returns and postage when the item is resold at the next cheapest identical price.
+- **A deal needs a bid at or above the best ask.** Most of the time none reaches it, because costs take about 15% of a resale. When one does, the page says which, and whether the live agent's own floor is cleared. A buy only ever becomes a proposal that a person approves.
+- The chart is the history of the cheapest identical landed price, one point per check. The daily scan and every check run from the page add a point, so it fills in over days.
+- The products without a check yet (iPhone, AirPods, Switch, MacBook, Watch, Galaxy, PS5, a phone case) are shown as 3D models with their list price. A checked product is shown as its best offer's photo with the background removed, and it turns in 3D too.
 
 ## Evaluation
 

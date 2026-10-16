@@ -203,13 +203,13 @@ test('the image proxy only fetches allow-listed hosts', async () => {
   s.close();
 });
 
-test('simulate returns the economics and checks the spend limit', async () => {
+test('what-if returns the economics and checks the spend limit', async () => {
   const s = await serve();
-  const r = await (await s.post('/api/simulate', { buyCents: 20000, shippingCents: 0, sellCents: 32000 })).json();
+  const r = await (await s.post('/api/whatif', { buyCents: 20000, shippingCents: 0, sellCents: 32000 })).json();
   assert.equal(r.verdict, 'profitable');
   assert.equal(r.netCents, 5700);
   assert.equal(r.withinSpendLimit, true);
-  assert.equal((await s.post('/api/simulate', { buyCents: -1, shippingCents: 0, sellCents: 5 })).status, 400);
+  assert.equal((await s.post('/api/whatif', { buyCents: -1, shippingCents: 0, sellCents: 5 })).status, 400);
   s.close();
 });
 

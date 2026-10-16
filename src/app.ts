@@ -197,7 +197,7 @@ export function createApp(deps: AppDeps): Server {
         return void res.end(hit.body);
       }
 
-      if (req.method === 'POST' && path === '/api/simulate') {
+      if (req.method === 'POST' && path === '/api/whatif') {
         const b = await readJson(req);
         const buy = wholeCents(b.buyCents), ship = wholeCents(b.shippingCents), sell = wholeCents(b.sellCents);
         if (buy === null || ship === null || sell === null || buy === 0 || sell === 0) return send(res, 400, { error: 'buyCents, shippingCents and sellCents must be whole numbers of cents.' });

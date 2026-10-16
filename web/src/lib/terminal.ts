@@ -2,16 +2,14 @@ import { $, api, h, int, money, safeLink, thumbSrc, verdictLabel, when } from '.
 import { createChart, type Pt } from './chart.ts';
 import { DEVICES, deviceLine, type Device } from './devices.ts';
 import { createViewer, type Viewer } from './product3d.ts';
-import { createPhotoViewer, type PhotoViewer } from './photo3d.ts';
 import { approvalPanel } from './analysis-view.ts';
 import { createRunPanel, streamAnalysis } from './run-panel.ts';
 import { createPicker, type PickItem } from './picker.ts';
-import { createPractice, type PracticeItem } from './practice-view.ts';
-import { dayRound, roundOf } from './practice.ts';
+import { createPhotoViewer, type PhotoViewer } from './photo3d.ts';
+import { average, bidsFor, providerOf, vsAvg, winner } from './book.ts';
 
-// The market terminal: product list, stats strip, price chart, offer book with an order ticket, clock and tape.
-// Two views of the same page. "Practice rounds" is a simulation (practice.ts): a book that moves every round, with four paper agents.
-// "Real checks" is stored data only. SKUdesk never trades; the ticket files a proposal that a person approves.
+// The market terminal: product dropdown, stats strip, price chart, an offer book with each buyer agent's bid, a buy ticket, scan clock and tape.
+// Every number comes from stored checks. SKUdesk never trades; the ticket files a proposal that a person approves.
 
 type Row = any; // /api/products row
 type Lot = { analysis: any; series: any[] };
@@ -46,8 +44,6 @@ const changeOf = (series: any[]): { pct: number; span: number } | null => {
 };
 
 export function mountTerminal(root: HTMLElement): void {
-  const qs = new URLSearchParams(location.search);
-  let view: 'practice' | 'real' = qs.get('view') === 'real' ? 'real' : 'practice';
   let rows: Row[] = [];
   let selKey = '';
   let selDevice: Device | null = null;
@@ -64,8 +60,7 @@ export function mountTerminal(root: HTMLElement): void {
 
   // ── static frame ──
   const chart = createChart({ points: [], currency: 'USD', mode });
-  const legend = h('span', { class: 'mk-legends' });
-  const paintLegend = (): void => legend.replaceChildren(h('span', { class: 'mk-legend' }, h('i', { class: 'mk-sw' }), view === 'practice' ? 'Cheapest identical, landed (simulated)' : 'Cheapest identical, landed'), h('span', { class: 'mk-legend' }, h('i', { class: 'mk-sw mk-sw-ref' }), view === 'practice' ? 'Reference price' : 'Retail (recalled)'));
+  const picker = createPicker((id) => { const d = DEVICES.find((x) => x.symbol === id); if (d) selectDevice(d); else selectProduct(id); });
   const el = {
     live: h('span', { class: 'mk-live', role: 'status' }, h('i', { 'aria-hidden': 'true' }), 'connecting'),
     list: h('div', { class: 'mk-al', role: 'list' }),
@@ -82,12 +77,11 @@ export function mountTerminal(root: HTMLElement): void {
     seg: h('div', { class: 'mk-seg', role: 'group', 'aria-label': 'Chart type' }),
     help: h('div', { class: 'mk-modal', hidden: true }),
   };
-  const practice = createPractice({ stats: el.stats, facts: el.facts, recent: el.recent, clock: el.clock, book: el.book, tape: el.tape, cap: el.cap }, chart, { mode: () => mode, onChange: () => { paintList(); paintPicker(); }, toReal: () => setView('real') });
-  const picker = createPicker((id) => { const d = DEVICES.find((x) => x.symbol === id); if (d) selectDevice(d); else selectProduct(id); });
   el.chartp.append(
-    h('div', { class: 'mk-ph mk-ctl' }, h('h2', {}, 'Price'), el.seg, practice.rangeSeg, h('span', { class: 'mk-ctl-sp' }), legend),
+    h('div', { class: 'mk-ph mk-ctl' }, h('h2', {}, 'Price'), el.seg, h('span', { class: 'mk-ctl-sp' }),
+      h('span', { class: 'mk-legends' }, h('span', { class: 'mk-legend' }, h('i', { class: 'mk-sw' }), 'Cheapest identical, landed'), h('span', { class: 'mk-legend' }, h('i', { class: 'mk-sw mk-sw-ref' }), 'Retail (recalled)'))),
     chart.el, el.cap);
-  const segBtn = (m: 'line' | 'candles', label: string): HTMLElement => h('button', { type: 'button', 'aria-pressed': String(mode === m), on: { click: () => { mode = m; paintSeg(); if (view === 'practice') practice.paintChart(); else paintChart(); } } }, label);
+  const segBtn = (m: 'line' | 'candles', label: string): HTMLElement => h('button', { type: 'button', 'aria-pressed': String(mode === m), on: { click: () => { mode = m; paintSeg(); paintChart(); } } }, label);
   const paintSeg = (): void => el.seg.replaceChildren(segBtn('line', 'Line'), segBtn('candles', 'Daily candles'));
   paintSeg();
 
@@ -101,25 +95,9 @@ export function mountTerminal(root: HTMLElement): void {
     h('button', { type: 'button', class: 'mk-q', 'aria-label': 'How this market works', on: { click: () => { el.help.hidden = false; } } }, '?'));
   top.querySelector('.logo-mark')!.innerHTML = '<svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><path d="M8 22 16 8l8 14" stroke="#CCFF00" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  const pill = h('span', { class: 'mk-pill' });
-  const noteText = h('span', { class: 'mk-note-t' });
-  const viewSeg = h('div', { class: 'mk-seg mk-viewseg', role: 'group', 'aria-label': 'Market view' });
-  const note = h('div', { class: 'mk-note' }, h('h1', { class: 'mk-h1' }, 'Market'), pill, noteText,
+  const note = h('div', { class: 'mk-note' }, h('h1', { class: 'mk-h1' }, 'Market'), h('span', { class: 'mk-pill' }, 'Asking prices'),
+    h('span', {}, 'Offers from Google Shopping, judged by Gemini. SKUdesk never trades: the ticket files a proposal and a person approves it.'),
     h('button', { type: 'button', class: 'mk-link', on: { click: () => { el.help.hidden = false; } } }, 'How it works'));
-  const pickBar = h('div', { class: 'mk-pickbar' }, picker.el, viewSeg);
-  function paintView(): void {
-    root.dataset.view = view;
-    pill.textContent = view === 'practice' ? 'Simulated' : 'Asking prices';
-    pill.className = view === 'practice' ? 'mk-pill mk-pill-sim' : 'mk-pill';
-    noteText.textContent = view === 'practice'
-      ? 'Practice rounds: a simulated book that moves every 6 seconds, traded by four paper agents. No offer here is real. Switch to Real checks for live data.'
-      : 'Offers from Google Shopping, judged by Gemini. SKUdesk never trades: the ticket files a proposal and a person approves it.';
-    viewSeg.replaceChildren(...([['practice', 'Practice rounds'], ['real', 'Real checks']] as const).map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String(view === k), 'data-view': k, on: { click: () => setView(k) } }, l)));
-    practice.rangeSeg.hidden = view !== 'practice';
-    el.seg.hidden = false;
-    paintLegend();
-    if (view === 'practice') el.live.className = 'mk-live sim';
-  }
 
   const body = h('div', { class: 'mk-body' },
     h('div', { class: 'mk-col mk-col-l' }, el.p3d, el.facts,
@@ -131,12 +109,12 @@ export function mountTerminal(root: HTMLElement): void {
   const foot = h('footer', { class: 'mk-foot-bar' }, h('span', {}, 'Prices are asking prices from Google Shopping, not retail prices and not sold prices.'), h('a', { href: '/app/' }, 'Desk'), h('a', { href: '/show/' }, 'Agent decision'), h('a', { href: '/app/create/' }, 'Next: Deploy agent'));
   el.help.append(h('div', { class: 'mk-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'How this market works' },
     h('div', { class: 'mk-dialog-h' }, h('h2', {}, 'How this market works'), h('button', { type: 'button', class: 'mk-x', 'aria-label': 'Close', on: { click: () => { el.help.hidden = true; } } }, '×')),
-    h('p', { class: 'mk-dialog-lead' }, 'This is not an exchange. It shows the ', h('b', {}, 'identical offers'), ' for a product, either as a simulated practice book or as the real checks the agent has run.'),
+    h('p', { class: 'mk-dialog-lead' }, 'This is not an exchange. It is a view of ', h('b', {}, 'identical offers'), ' for each product, with the history of the cheapest one.'),
     h('ol', { class: 'mk-steps' },
-      ...[['The book', 'Every offer Gemini judged to be the same product, cheapest first. Amber rows matched the product but the price cannot be believed.'], ['The chart', 'The cheapest identical landed price at each check. Daily candles group the checks of one day. The bars underneath count identical offers.'], ['The ticket', 'Shows what a buy would cost, what a resale would keep and whether the per-buy limit allows it. "Check live" runs a fresh check.'], ['The clock', 'Real checks: Cloud Scheduler re-checks the watchlist once a day and each scan adds a point. Practice rounds: a new simulated round every 6 seconds.'], ['Practice rounds', 'A simulated book around a real price or a list price. Four paper agents with different rules trade it with the same fee maths as the live agent. It is there to show how the agent decides, not to quote prices.']].map(([t, p], i) => h('li', {}, h('span', { class: 'mk-stepn' }, i + 1), h('div', {}, h('h3', {}, t), h('p', {}, p))))),
+      ...[['The book', 'Asks are the identical offers sellers want, dearest at the top and the best ask next to the spread. Bids are what each buyer agent could pay and still clear its margin floor after fees, returns and postage. A deal needs a bid at or above the best ask. Amber rows matched the product but the price cannot be believed.'], ['The chart', 'The cheapest identical landed price at each check. Daily candles group the checks of one day. The bars underneath count identical offers.'], ['The ticket', 'Shows what a buy would cost, what a resale would keep and whether the per-buy limit allows it. "Check live" runs a fresh check.'], ['The clock', 'Cloud Scheduler re-checks the watchlist once a day. Each scan adds a point to the history.']].map(([t, p], i) => h('li', {}, h('span', { class: 'mk-stepn' }, i + 1), h('div', {}, h('h3', {}, t), h('p', {}, p))))),
     h('div', { class: 'mk-dialog-f' }, h('button', { type: 'button', class: 'mk-btn mk-btn-pri', on: { click: () => { el.help.hidden = true; } } }, 'Got it'))));
   root.dataset.tab = tab;
-  root.replaceChildren(top, note, pickBar, h('main', { class: 'mk-main', id: 'main' }, body), tabs, foot, el.help);
+  root.replaceChildren(top, note, h('div', { class: 'mk-pickbar' }, picker.el), h('main', { class: 'mk-main', id: 'main' }, body), tabs, foot, el.help);
   addEventListener('keydown', (e) => { if (e.key === 'Escape') el.help.hidden = true; });
 
   // ── paint ──
@@ -147,34 +125,12 @@ export function mountTerminal(root: HTMLElement): void {
       h('button', { type: 'button', class: `mk-ar${on ? ' on' : ''}`, role: 'listitem', 'aria-current': on ? 'true' : undefined, 'data-key': key, on: { click } },
         h('span', { class: 'mk-ar-id' }, h('span', { class: 'mk-ar-sym' }, symbol, on ? h('i', { class: 'mk-act', 'aria-hidden': 'true' }) : null), h('span', { class: 'mk-ar-name' }, name)),
         spark(series, dir), h('span', { class: 'mk-ar-pc' }, h('span', { class: price === 'no offer' ? 'mk-ar-px none' : 'mk-ar-px' }, price), typeof pc === 'string' ? h('span', { class: `mk-ar-ch ${dir}` }, pc) : pc));
-    const practiceView = view === 'practice';
     el.list.replaceChildren(...(rows.length ? rows.map((r) => {
-      if (practiceView) {
-        if (!practice.has(r.key)) return mkRow(r.key, code(r.query), r.query, 'no offer', '-', [], 'flat', r.key === selKey && !selDevice, () => selectProduct(r.key));
-        const q = practice.quote(r.key);
-        return mkRow(r.key, code(r.query), r.query, q.price, q.ch, q.spark, q.dir, r.key === selKey && !selDevice, () => selectProduct(r.key));
-      }
       const ch = changeOf(r.series);
       const dir = ch ? dirOf(ch.pct) : 'flat';
       return mkRow(r.key, code(r.query), r.query, r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', ch ? pctStr(ch.pct) : '-', r.series.map((p: any) => p.buyLandedCents), dir, r.key === selKey && !selDevice, () => selectProduct(r.key));
     }) : [h('p', { class: 'mk-none' }, 'No products yet. Run a check on the desk.')]));
-    el.devices.replaceChildren(...DEVICES.map((d) => {
-      if (practiceView) { const q = practice.quote(d.symbol); return mkRow(d.symbol, d.symbol, d.name, q.price, q.ch, q.spark, q.dir, selDevice?.symbol === d.symbol, () => selectDevice(d)); }
-      return mkRow(d.symbol, d.symbol, d.name, money(d.listCents), 'list', [], 'flat', selDevice?.symbol === d.symbol, () => selectDevice(d));
-    }));
-  }
-
-  const curId = (): string => (selDevice ? selDevice.symbol : selKey);
-  function paintPicker(): void {
-    let items: PickItem[];
-    if (view === 'practice') items = practice.pickItems();
-    else {
-      items = [
-        ...rows.map((r): PickItem => { const ch = changeOf(r.series); return { id: r.key, symbol: code(r.query), name: r.query, sub: `${r.market.toUpperCase()} · ${r.identical}/${r.considered} identical`, price: r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', change: ch ? pctStr(ch.pct) : '-', dir: ch ? dirOf(ch.pct) : 'flat', group: 'Checked products' }; }),
-        ...DEVICES.map((d): PickItem => ({ id: d.symbol, symbol: d.symbol, name: d.name, sub: d.category, price: money(d.listCents), change: 'list', dir: 'flat', group: 'Reference products' })),
-      ];
-    }
-    picker.set(items, curId());
+    el.devices.replaceChildren(...DEVICES.map((d) => mkRow(d.symbol, d.symbol, d.name, money(d.listCents), 'list', [], 'flat', selDevice?.symbol === d.symbol, () => selectDevice(d))));
   }
 
   let photo: PhotoViewer | null = null;
@@ -191,7 +147,7 @@ export function mountTerminal(root: HTMLElement): void {
     const src = thumbSrc(r?.thumbnail ?? lot?.analysis.buy?.offer.thumbnail);
     const name = r?.query ?? '';
     const key = `${selKey}|${src ?? ''}`;
-    if (photo && photoKey === key && el.p3d.firstElementChild === photo.el) return; // same product, keep the card where the person turned it
+    if (photo && photoKey === key && el.p3d.firstElementChild === photo.el) return; // same product: keep the cutout where the person turned it
     photo?.dispose(); photo = null; photoKey = key;
     if (!src) {
       el.p3d.replaceChildren(h('div', { class: 'p3d p3d-photo', role: 'group', 'aria-label': name || 'Product' },
@@ -202,6 +158,15 @@ export function mountTerminal(root: HTMLElement): void {
     }
     photo = createPhotoViewer(src, r ? code(r.query) : '', name, 'Sealed set');
     el.p3d.replaceChildren(photo.el);
+  }
+
+  const curId = (): string => (selDevice ? selDevice.symbol : selKey);
+  function paintPicker(): void {
+    const items: PickItem[] = [
+      ...rows.map((r): PickItem => { const ch = changeOf(r.series); return { id: r.key, symbol: code(r.query), name: r.query, sub: `${r.market.toUpperCase()} · ${r.identical}/${r.considered} identical`, price: r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', change: ch ? pctStr(ch.pct) : '-', dir: ch ? dirOf(ch.pct) : 'flat', group: 'Checked products' }; }),
+      ...DEVICES.map((d): PickItem => ({ id: d.symbol, symbol: d.symbol, name: d.name, sub: d.category, price: money(d.listCents), change: 'list', dir: 'flat', group: 'Reference products' })),
+    ];
+    picker.set(items, curId());
   }
 
   function paintFacts(): void {
@@ -287,7 +252,6 @@ export function mountTerminal(root: HTMLElement): void {
     const lastScan = scans[0];
     const bar = h('i', {});
     bar.style.width = `${pctDone.toFixed(1)}%`;
-    el.clock.dataset.built = 'r';
     el.clock.replaceChildren(h('div', { class: 'mk-ph' }, h('h2', {}, 'Scan clock'), h('span', { class: 'mk-ph-r' }, limits?.paused ? 'PAUSED' : 'daily 02:00 UTC')),
       h('div', { class: 'mk-clk' }, h('div', { class: 'mk-clk-t n' }, `${hh}:${mm}:${ss}`), h('div', { class: 'mk-clk-s' }, limits?.paused ? 'The agent is paused by its owner.' : 'until the next scheduled scan'), h('div', { class: 'mk-clk-bar', 'aria-hidden': 'true' }, bar),
         h('div', { class: 'mk-clk-s' }, lastScan ? `Last scan ${when(lastScan.createdAt)}, ${lastScan.done.length} checked` : 'No scan has run yet')));
@@ -303,20 +267,30 @@ export function mountTerminal(root: HTMLElement): void {
       return;
     }
     const cc = a.currency;
-    const asks = [...a.identical.map((p: any) => ({ p, flag: false })), ...(a.flagged ?? []).map((p: any) => ({ p, flag: true }))].sort((x, y) => x.p.landedCents - y.p.landedCents);
-    const max = Math.max(1, ...asks.map((x) => x.p.landedCents));
-    let cum = 0;
-    const bestAt = asks.findIndex((x) => !x.flag);
-    const bookRows = asks.map(({ p, flag }, i) => {
-      if (!flag) cum++;
+    const avg = average(a.identical.map((p: any) => p.landedCents));
+    const sorted = [...a.identical].sort((x: any, y: any) => x.landedCents - y.landedCents);
+    const flaggedAsks = [...(a.flagged ?? [])].sort((x: any, y: any) => x.landedCents - y.landedCents);
+    const vsText = (cents: number): HTMLElement => { const v = vsAvg(cents, avg); return h('span', { class: `n mk-vs ${v === null ? '' : dirOf(-v)}` }, v === null ? '-' : pctStr(v)); };
+    const askRow = (p: any, i: number, flag: boolean): HTMLElement => {
       const depth = h('i', { class: flag ? 'flag' : '' });
-      depth.style.width = `${((flag ? 1 : cum) / Math.max(1, a.identical.length)) * 100}%`;
-      return h('div', { class: `mk-tr mk-bk${i === bestAt ? ' best' : ''}${flag ? ' flag' : ''}` },
+      depth.style.width = `${flag ? 100 : ((i + 1) / Math.max(1, sorted.length)) * 100}%`;
+      return h('div', { class: `mk-tr mk-bk${i === 0 && !flag ? ' best' : ''}${flag ? ' flag' : ''}` },
         h('span', { class: `n ${flag ? 'dn' : 'sell'}` }, money(p.landedCents, cc)),
-        h('span', { class: 'mk-who', title: p.offer.title }, p.offer.url ? safeLink(p.offer.url, p.offer.seller) : p.offer.seller),
-        h('span', { class: 'mk-depth', 'aria-hidden': 'true' }, depth),
-        h('span', { class: 'n mk-sz' }, flag ? 'bad price' : p.quoted?.idQuote ? `#${p.quoted.idQuote}` : ''));
-    });
+        h('span', { class: 'mk-who', title: `${p.offer.title} (via ${providerOf(p.offer.origin)})` }, p.offer.url ? safeLink(p.offer.url, p.offer.seller) : p.offer.seller, h('small', {}, providerOf(p.offer.origin))),
+        flag ? h('span', { class: 'n mk-vs dn' }, 'bad price') : vsText(p.landedCents),
+        h('span', { class: 'mk-depth', 'aria-hidden': 'true' }, depth));
+    };
+    // asks run from dearest at the top to the best ask next to the spread, like a ladder
+    const askRows = sorted.map((p: any, i: number) => askRow(p, i, false)).reverse();
+    const setAside = flaggedAsks.map((p: any, i: number) => askRow(p, i, true));
+    const bids = bidsFor(a, limits?.minMarginBps ?? 1000);
+    const win = winner(bids);
+    const topBid = bids[0]?.ceilingCents ?? null;
+    const bidRows = bids.map((b) => h('div', { class: `mk-tr mk-bid${b.crosses ? ' cross' : ''}`, 'data-agent': b.policy.id },
+      h('span', { class: 'n buy' }, b.ceilingCents === null ? '-' : money(b.ceilingCents, cc)),
+      h('span', { class: 'mk-who', title: b.policy.rule }, b.policy.name, h('small', {}, `${b.policy.rule} · ${(b.floorBps / 100).toFixed(1)}%`)),
+      b.ceilingCents === null ? h('span', { class: 'n mk-vs' }, '-') : vsText(b.ceilingCents),
+      h('span', { class: `n mk-bid-s ${b.crosses ? 'up' : ''}` }, b.gapPct === null ? 'no room' : b.crosses ? 'takes it' : `ask ${b.gapPct.toFixed(0)}% over`)));
     const best = a.buy;
     const bestPct = best && a.retailCents ? ((best.landedCents - a.retailCents) / a.retailCents) * 100 : null;
     const arb = a.arbitrage;
@@ -326,16 +300,28 @@ export function mountTerminal(root: HTMLElement): void {
     const ticket = h('div', { class: 'mk-tkt' },
       h('div', { class: 'mk-tkt-h' }, 'Buy ticket'),
       h('dl', { class: 'mk-pf' },
-        ...[['Buy at', best ? `${money(best.landedCents, cc)} · ${best.offer.seller}` : 'no identical offer'], ['Resale reference', a.sell ? money(a.sell.listAtCents, cc) : '-'], ['Net after all costs', arb ? `${money(arb.netCents, cc)} (${(arb.marginBps / 100).toFixed(1)}%)` : '-'], ['Margin floor', limits ? `${(limits.minMarginBps / 100).toFixed(1)}%` : '-'], ['Per-buy limit', best && limits ? (overLimit ? `above the ${money(limits.maxSpendCents, cc)} limit` : `within ${money(limits.maxSpendCents, cc)}`) : '-']]
+        ...[['Buy at', best ? `${money(best.landedCents, cc)} · ${best.offer.seller}` : 'no identical offer'], ['Resale reference', arb ? money(arb.sellReference.priceCents, cc) : '-'], ['Net after all costs', arb ? `${money(arb.netCents, cc)} (${(arb.marginBps / 100).toFixed(1)}%)` : '-'], ['Margin floor', limits ? `${(limits.minMarginBps / 100).toFixed(1)}%` : '-'], ['Per-buy limit', best && limits ? (overLimit ? `above the ${money(limits.maxSpendCents, cc)} limit` : `within ${money(limits.maxSpendCents, cc)}`) : '-']]
           .map(([k, v]) => h('div', {}, h('dt', {}, k), h('dd', {}, v)))),
       h('div', { class: 'mk-tkt-a' }, runBtn, h('a', { class: 'mk-btn', href: `/app/opportunities/view/?id=${a.id}` }, 'Evidence')), liveBox);
+    const spread = best && topBid ? ((best.landedCents - topBid) / topBid) * 100 : null;
+    const verdictLine = !bids.length
+      ? 'No resale reference yet: the bids need a second identical offer to price a resale.'
+      : win
+        ? `${win.policy.name} bids ${money(win.ceilingCents!, cc)}, which reaches the best ask. ${bids.find((b) => b.policy.id === 'live')?.crosses ? 'The live agent clears its own margin floor too, so it files a proposal for a person to approve.' : 'Only the looser policies reach it: the live agent keeps its margin floor and files nothing.'}`
+        : `No bid reaches the best ask. It sits ${spread === null ? '' : `${spread.toFixed(1)}% `}above the highest bid, because fees, returns and postage take about ${(((a.assumptions.marketplaceFeeBps + a.assumptions.returnReserveBps) / 100)).toFixed(0)}% of a resale.`;
     el.book.replaceChildren(
       h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book'), h('span', { class: 'mk-ph-r' }, code(a.query))),
-      h('div', { class: 'mk-th mk-bkh' }, h('span', {}, 'Landed'), h('span', {}, 'Seller'), h('span', {}, 'Depth'), h('span', {}, 'Evidence')),
-      h('div', { class: 'mk-tbody' }, bookRows.length ? bookRows : [h('p', { class: 'mk-none' }, 'No offer passed the identity gate. The gate would rather say no than guess.')]),
+      h('div', { class: 'mk-th mk-bkh' }, h('span', {}, 'Landed'), h('span', {}, 'Seller'), h('span', {}, 'vs avg'), h('span', {}, 'Depth')),
+      h('div', { class: 'mk-sidehead' }, 'Asks: what sellers want'),
+      h('div', { class: 'mk-tbody mk-asks' }, askRows.length ? askRows : [h('p', { class: 'mk-none' }, 'No offer passed the identity gate. The gate would rather say no than guess.')]),
+      h('div', { class: 'mk-spread', 'data-testid': 'spread' }, h('span', {}, 'Average ', h('b', { class: 'n' }, avg === null ? '-' : money(avg, cc))), h('span', {}, 'Best ask ', h('b', { class: 'n' }, best ? money(best.landedCents, cc) : '-')), h('span', {}, 'Top bid ', h('b', { class: 'n' }, topBid === null ? '-' : money(topBid, cc))), h('span', {}, 'Gap ', h('b', { class: 'n' }, spread === null ? '-' : `${spread.toFixed(1)}%`))),
+      h('div', { class: 'mk-sidehead' }, 'Bids: what each agent will pay'),
+      h('div', { class: 'mk-tbody mk-bids', 'data-testid': 'bids' }, bidRows.length ? bidRows : [h('p', { class: 'mk-none' }, 'Waiting for a second identical offer.')]),
+      h('p', { class: 'mk-bk-verdict' }, verdictLine),
+      setAside.length ? h('div', { class: 'mk-sidehead' }, 'Set aside by the identity gate') : null,
+      setAside.length ? h('div', { class: 'mk-tbody' }, setAside) : null,
       h('div', { class: 'mk-bk-sum' }, best ? h('span', {}, 'Best ask ', h('b', { class: 'n' }, money(best.landedCents, cc)), bestPct === null ? '' : ` · ${pctStr(bestPct)} vs retail`) : h('span', {}, 'No best ask'), h('span', { class: 'dim' }, `${a.identical.length} identical · ${(a.flagged ?? []).length} set aside`)),
       ticket);
-    void max;
   }
 
   async function runLive(query: string, market: string, msg: HTMLElement, btn: HTMLButtonElement): Promise<void> {
@@ -363,43 +349,7 @@ export function mountTerminal(root: HTMLElement): void {
         h('span', { class: 'mono dim' }, new Date(e.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })), h('span', { class: `mk-kind ${e.kind}` }, e.kind), h('span', { class: 'mk-who' }, e.title))) : [h('p', { class: 'mk-none' }, 'No activity yet.')]));
   }
 
-  function ensureSelection(): void {
-    if (view !== 'practice' || selDevice) return;
-    if (selKey && practice.has(selKey)) return;
-    const first = rows.find((r) => practice.has(r.key));
-    if (first) { selKey = first.key; return; }
-    selKey = '';
-    selDevice = DEVICES.find((d) => d.symbol === 'IP18P') ?? DEVICES[0];
-  }
-  const paintLive = (): void => {
-    if (view !== 'practice') return;
-    el.live.className = 'mk-live sim';
-    el.live.replaceChildren(h('i', { 'aria-hidden': 'true' }), `Simulated · round ${dayRound(roundOf(Date.now())).toLocaleString('en-US')}`);
-  };
-  const paintAll = (): void => {
-    ensureSelection();
-    paintList(); paintPicker(); paintP3d();
-    if (view === 'practice') {
-      if (practice.selected() !== curId()) practice.select(curId());
-      practice.paint(); paintLive();
-    } else {
-      paintFacts(); paintStats(); paintChart(); paintRecent(); paintBook(); paintTape(); paintClock();
-    }
-  };
-
-  const CLASS_OF: [RegExp, string][] = [[/iphone|galaxy|pixel|phone/i, 'Phones'], [/airpods|headphone|earbud|buds|speaker/i, 'Audio'], [/playstation|ps5|xbox|switch|nintendo|console/i, 'Gaming'], [/macbook|laptop|ipad|tablet/i, 'Computing'], [/watch/i, 'Wearables'], [/\bcase\b|cover/i, 'Accessories']];
-  const STREET: Record<string, number> = { Accessories: 0.9, Audio: 0.93, Phones: 0.95, Gaming: 0.96, Computing: 0.94, Wearables: 0.93 };
-  function practiceItems(): PracticeItem[] {
-    const checked = rows.filter((r) => r.buy).map((r): PracticeItem => ({
-      key: r.key, symbol: code(r.query), name: r.query, currency: r.currency, fairCents: r.buy.landedCents, retailCents: r.retailCents ?? null, offers: r.identical,
-      category: CLASS_OF.find(([re]) => re.test(r.query))?.[1] ?? 'Sets', group: 'Checked products', sub: `${r.market.toUpperCase()} · built on a real check`, basis: 'check',
-    }));
-    const devs = DEVICES.map((d): PracticeItem => ({
-      key: d.symbol, symbol: d.symbol, name: d.name, currency: 'USD', fairCents: Math.round(d.listCents * (STREET[d.category] ?? 0.94)), retailCents: d.listCents,
-      category: d.category, group: 'Reference products', sub: `${d.category} · built on the list price`, basis: 'list',
-    }));
-    return [...checked, ...devs];
-  }
+  const paintAll = (): void => { paintList(); paintPicker(); paintP3d(); paintFacts(); paintStats(); paintChart(); paintRecent(); paintBook(); paintTape(); paintClock(); };
 
   // ── data ──
   async function loadLot(): Promise<void> {
@@ -409,55 +359,32 @@ export function mountTerminal(root: HTMLElement): void {
     const [r, ev, sc, lim] = await Promise.all([api<Row[]>('/api/products').catch(() => rows), api<any[]>('/api/events').catch(() => events), api<any[]>('/api/scans').catch(() => scans), api('/api/limits').catch(() => limits)]);
     rows = r.sort((x, y) => y.identical - x.identical || y.considered - x.considered);
     events = ev; scans = sc; limits = lim;
-    practice.setItems(practiceItems());
-    // Real view opens on the product with the longest price history, so the chart has something to show.
-    if (view === 'real' && !selDevice && (!selKey || !rows.some((x) => x.key === selKey))) selKey = [...rows].sort((x, y) => y.series.filter((p: any) => p.buyLandedCents !== null).length - x.series.filter((p: any) => p.buyLandedCents !== null).length || y.identical - x.identical)[0]?.key ?? '';
-    ensureSelection();
+    // Open on the product with the longest price history, so the chart has something to show.
+    if (!selDevice && (!selKey || !rows.some((x) => x.key === selKey))) selKey = [...rows].sort((x, y) => y.series.filter((p: any) => p.buyLandedCents !== null).length - x.series.filter((p: any) => p.buyLandedCents !== null).length || y.identical - x.identical)[0]?.key ?? '';
     await loadLot();
     paintAll();
   }
-  function syncUrl(): void {
-    const p = new URLSearchParams();
-    if (view === 'real') p.set('view', 'real');
-    if (selDevice) p.set('device', selDevice.symbol); else if (selKey) p.set('key', selKey);
-    history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
-  }
-  function toChartTab(): void {
-    if (matchMedia('(max-width:1099px)').matches) { tab = 'chart'; root.dataset.tab = 'chart'; tabs.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', (b as HTMLElement).dataset.tab === 'chart'); }); }
-  }
   function selectProduct(key: string): void {
     selDevice = null; selKey = key; lastPrice = null; liveBox.replaceChildren();
-    syncUrl();
-    void loadLot().then(paintAll);
+    history.replaceState(null, '', `?key=${key}`);
     paintAll();
-    toChartTab();
+    void loadLot().then(paintAll);
+    if (matchMedia('(max-width:1099px)').matches) { tab = 'chart'; root.dataset.tab = 'chart'; tabs.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', (b as HTMLElement).dataset.tab === 'chart'); }); }
   }
   function selectDevice(d: Device): void {
     selDevice = d; lot = null; lastPrice = null; liveBox.replaceChildren();
-    syncUrl();
-    paintAll();
-    toChartTab();
-  }
-  function setView(v: 'practice' | 'real'): void {
-    if (v === view) return;
-    view = v; lastPrice = null;
-    el.live.className = 'mk-live';
-    syncUrl();
-    paintView();
+    history.replaceState(null, '', `?device=${d.symbol}`);
     paintAll();
   }
 
-  const wantDevice = DEVICES.find((d) => d.symbol === qs.get('device'));
+  const q = new URLSearchParams(location.search);
+  const wantDevice = DEVICES.find((d) => d.symbol === q.get('device'));
   if (wantDevice) selDevice = wantDevice;
-  if (qs.get('key')) selKey = qs.get('key')!;
-  paintView();
+  if (q.get('key')) selKey = q.get('key')!;
   void api('/api/status').then((s) => { status = s; });
   void refresh();
   setInterval(() => void refresh(), POLL_MS);
-  let beat = 0;
-  setInterval(() => {
-    if (view === 'practice') { if (practice.tick()) { paintLive(); paintList(); paintPicker(); } } else if (++beat % 4 === 0) paintClock();
-  }, 250);
+  setInterval(paintClock, 1000);
   void $;
   void deviceLine;
   void flashClass;
