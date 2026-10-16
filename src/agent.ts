@@ -144,7 +144,10 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
   const query = req.query.trim();
 
   const { offers: raw, fromCache } = await deps.search(query, market.code, { fresh: req.fresh });
-  const offers = dedupe(raw).slice(0, MAX_OFFERS);
+  // Listings the source itself labels pre-owned or refurbished can never be the factory-new product, so they are not sent to the gate
+  // and the slots go to listings that can be.
+  const preOwned = raw.filter((o) => o.secondHand).length;
+  const offers = dedupe(raw.filter((o) => !o.secondHand)).slice(0, MAX_OFFERS);
   emit({ type: 'search', listings: offers.length, fromCache });
 
   // The Identity Engine is the only gate. The anchor is the user's own query, treated as a sealed new item.
@@ -223,6 +226,7 @@ export async function analyze(req: AnalyzeRequest, deps: AgentDeps, emit: (e: An
   if (flagged.length) notes.push(`${flagged.length} offer(s) matched the product but had a price that cannot be believed (under ${RETAIL_FLOOR * 100}% of the recalled retail price or under ${OUTLIER_FLOOR * 100}% of the median identical price), so they were treated as data errors and not traded on.`);
   if (retailCents !== null) notes.push(`Gemini recalls a typical retail price of ${money(retailCents, cur)} for this product. This is recalled knowledge, not a live quote.`);
   notes.push('Resale is assumed at the next cheapest identical price, because a buyer can pick any identical offer.');
+  if (preOwned) notes.push(`${preOwned} listing${preOwned === 1 ? ' was' : 's were'} left out because the source labels ${preOwned === 1 ? 'it' : 'them'} pre-owned or refurbished.`);
   if (photosChecked) notes.push(`Gemini also looked at ${photosChecked} listing photo${photosChecked === 1 ? '' : 's'}${photosRefused ? `; ${photosRefused} showed something other than the product and ${photosRefused === 1 ? 'was' : 'were'} dropped` : ' and none contradicted the text'}.`);
 
   const counts = { considered: gated.length, identical: passed.length, different: gated.filter((g) => g.verdict === 'different').length, uncertain: gated.filter((g) => g.verdict === 'uncertain').length };

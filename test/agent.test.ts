@@ -254,3 +254,16 @@ test('shipping defaults scale with the market so they stay realistic in a high-d
   assert.equal(a.assumptions.unknownShippingCents, 35000);
   assert.equal(a.assumptions.outboundShippingCents, 52500);
 });
+
+test('listings the source labels pre-owned never reach the gate, and the slots go to new ones', async () => {
+  let judged = 0;
+  const counting = { compare: async (_a: Listing, b: Listing) => { judged++; return verdict(/SET/.test(b.title) ? 'identical' : 'different'); } };
+  const a = await analyze({ query: 'SET', market: 'us' }, deps([
+    offer('A', 'SET new', 10000),
+    offer('B', 'SET renewed', 5000, { secondHand: true }),
+    offer('C', 'SET refurbished', 6000, { secondHand: true }),
+  ], { engine: counting }));
+  assert.equal(judged, 1);
+  assert.equal(a.buy?.offer.seller, 'A');
+  assert.match(a.notes.join(' '), /2 listings were left out because the source labels them pre-owned or refurbished/);
+});
