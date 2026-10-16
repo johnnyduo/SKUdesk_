@@ -45,6 +45,12 @@ Anyone can run a check and read every page. Changing the agent needs the owner k
 
 The kill switch stops scans, new proposals and approvals. A proposal above the per-buy limit cannot be approved.
 
+## Market page
+
+`/market/` has two views. **Real checks** shows only stored data: the identical offers of each checked product, the history of the cheapest one, and a buy ticket that files a proposal for a person to approve.
+
+**Practice rounds** is a simulation and says so on the page. A new round starts every 6 seconds. Each product has its own pace, number of sellers and how often a cheap listing shows up, and the book is built around the latest real price (or a list price for the reference products). Four paper agents with different margin floors and holding times trade it with the same cost maths as the live agent, so most rounds end in an honest pass. The rounds are a pure function of the product and the clock, so every visitor sees the same chart. It is there to show how the agent decides, not to quote prices.
+
 ## Evaluation
 
 `npm run eval` sends the 43 pairs to Gemini and reports the one number that has to be zero: a pair that should not match but passed the gate. The last run had none, with 41 exact answers and 2 where the model said "uncertain" for a pair labelled different. Most listing texts are written to look like marketplace titles; five are real titles that once slipped through. There are no barcode pairs and no image inputs yet, and 43 pairs is a small sample.

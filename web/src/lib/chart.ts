@@ -4,7 +4,9 @@ import { h, money, money0 } from './client.ts';
 // a retail reference line, a last-price tag and a crosshair with a tooltip. Plain SVG, no dependencies.
 
 export interface Pt { t: string; y: number | null; v: number }
-export interface ChartOpts { points: Pt[]; currency: string; refCents?: number | null; mode: 'line' | 'candles' }
+export interface Mark { t: string; side: 'BUY' | 'SELL'; label: string }
+// bucketMs groups candles by a fixed span instead of by day; live switches the labels to clock times with seconds.
+export interface ChartOpts { points: Pt[]; currency: string; refCents?: number | null; mode: 'line' | 'candles'; bucketMs?: number; live?: boolean; marks?: Mark[]; volName?: string; refLabel?: string }
 
 const NS = 'http://www.w3.org/2000/svg';
 const svgEl = (tag: string, attrs: Record<string, string | number> = {}): SVGElement => {
@@ -20,13 +22,13 @@ function dayKey(ms: number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export function toCandles(points: Pt[]): Candle[] {
+export function toCandles(points: Pt[], bucketMs?: number): Candle[] {
   const out: Candle[] = [];
   let key = '';
   for (const p of points) {
     if (p.y === null) continue;
     const ms = new Date(p.t).getTime();
-    const k = dayKey(ms);
+    const k = bucketMs ? String(Math.floor(ms / bucketMs)) : dayKey(ms);
     if (k !== key || !out.length) {
       out.push({ t0: ms, t1: ms, o: p.y, h: p.y, l: p.y, c: p.y, v: p.v, n: 1 });
       key = k;
@@ -40,6 +42,7 @@ export function toCandles(points: Pt[]): Candle[] {
 
 const fmtDay = (ms: number): string => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 const fmtTime = (ms: number): string => new Date(ms).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const fmtClock = (ms: number): string => new Date(ms).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: ChartOpts): void } {
   let opts = initial;
@@ -75,7 +78,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
     const pad = { l: 10, r: 74, t: 14, b: 24 };
     const volH = Math.round((H - pad.t - pad.b) * 0.16);
     const plotB = H - pad.b - volH - 6;
-    const candles = opts.mode === 'candles' ? toCandles(opts.points) : [];
+    const candles = opts.mode === 'candles' ? toCandles(opts.points, opts.bucketMs) : [];
     const series = opts.mode === 'candles' && candles.length >= 2 ? candles : null;
 
     const ys = series ? series.flatMap((c) => [c.h, c.l]) : pts.map((p) => p.y!);
@@ -103,7 +106,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
     const firstMs = series ? series[0].t0 : new Date(pts[0].t).getTime();
     const lastMs = series ? series[n - 1].t1 : new Date(pts[n - 1].t).getTime();
     const sameDay = lastMs - firstMs < 36 * 3600 * 1000;
-    const labelCount = Math.min(5, n);
+    const labelCount = Math.max(2, Math.min(5, n, Math.floor((W - pad.l - pad.r) / 100)));
     for (let k = 0; k < labelCount; k++) {
       const i = Math.round((k * (n - 1)) / Math.max(labelCount - 1, 1));
       const ms = series ? series[i].t0 : new Date(pts[i].t).getTime();
@@ -117,7 +120,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
       const y = yOf(opts.refCents);
       svg.append(svgEl('line', { class: 'mk-ref', x1: pad.l, x2: W - pad.r, y1: y, y2: y }));
       const t = svgEl('text', { class: 'mk-ref-t', x: pad.l + 6, y: y - 5 });
-      t.textContent = `retail ${money0(opts.refCents, cur)} (recalled)`;
+      t.textContent = opts.refLabel ? `${opts.refLabel} ${money0(opts.refCents, cur)}` : `retail ${money0(opts.refCents, cur)} (recalled)`;
       svg.append(t);
     }
 
@@ -133,7 +136,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
       svg.append(svgEl('rect', { class: up ? 'mk-vup' : 'mk-vdn', x: xOf(i) - bw / 2, y: vbase - bh, width: bw, height: Math.max(bh, v > 0 ? 1 : 0) }));
     });
     const vl = svgEl('text', { class: 'mk-ax mk-ax-s', x: pad.l + 2, y: vbase - volH - 2 });
-    vl.textContent = 'IDENTICAL OFFERS';
+    vl.textContent = (opts.volName ?? 'Identical offers').toUpperCase();
     svg.append(vl);
 
     // price
@@ -151,7 +154,7 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
         svg.append(g);
         xsArr.push(x); ysArr.push(yOf(c.c));
       });
-      items = series.map((c) => ({ label: fmtDay(c.t0), rows: [['Open', money(c.o, cur)], ['High', money(c.h, cur)], ['Low', money(c.l, cur)], ['Close', money(c.c, cur)], ['Checks', String(c.n)], ['Identical offers', String(c.v)]] }));
+      items = series.map((c) => ({ label: opts.live ? fmtClock(c.t0) : fmtDay(c.t0), rows: [['Open', money(c.o, cur)], ['High', money(c.h, cur)], ['Low', money(c.l, cur)], ['Close', money(c.c, cur)], [opts.live ? 'Rounds' : 'Checks', String(c.n)], [opts.volName ?? 'Identical offers', String(c.v)]] }));
       lastClose = series[n - 1].c; prevClose = series[n - 2].c;
     } else {
       const line = pts.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.y!).toFixed(1)}`).join(' ');
@@ -164,8 +167,23 @@ export function createChart(initial: ChartOpts): { el: HTMLElement; update(o: Ch
       svg.append(svgEl('polygon', { points: `${xOf(0)},${plotB} ${line} ${xOf(n - 1)},${plotB}`, fill: `url(#${gradId})` }));
       svg.append(svgEl('polyline', { class: 'mk-line', fill: 'none', points: line }));
       pts.forEach((p, i) => { xsArr.push(xOf(i)); ysArr.push(yOf(p.y!)); if (n <= 40) svg.append(svgEl('circle', { class: 'mk-dot', cx: xOf(i), cy: yOf(p.y!), r: 2.2 })); });
-      items = pts.map((p, i) => ({ label: fmtTime(new Date(p.t).getTime()), rows: [['Cheapest landed', money(p.y!, cur)], ['vs previous', i ? `${p.y! >= pts[i - 1].y! ? '+' : ''}${(((p.y! - pts[i - 1].y!) / pts[i - 1].y!) * 100).toFixed(2)}%` : '-'], ['Identical offers', String(p.v)]] }));
+      items = pts.map((p, i) => ({ label: opts.live ? fmtClock(new Date(p.t).getTime()) : fmtTime(new Date(p.t).getTime()), rows: [['Cheapest landed', money(p.y!, cur)], ['vs previous', i ? `${p.y! >= pts[i - 1].y! ? '+' : ''}${(((p.y! - pts[i - 1].y!) / pts[i - 1].y!) * 100).toFixed(2)}%` : '-'], [opts.volName ?? 'Identical offers', String(p.v)]] }));
       lastClose = pts[n - 1].y!; prevClose = pts[n - 2].y!;
+    }
+
+    // trade markers: a triangle under the price for a buy, over it for a sale
+    for (const m of opts.marks ?? []) {
+      const ms = new Date(m.t).getTime();
+      let idx = -1;
+      if (series) idx = series.findIndex((c, i) => ms >= c.t0 && ms < (i + 1 < series.length ? series[i + 1].t0 : c.t1 + (opts.bucketMs ?? 86_400_000)));
+      else { let bd = Infinity; pts.forEach((p, i) => { const d = Math.abs(new Date(p.t).getTime() - ms); if (d < bd) { bd = d; idx = i; } }); if (bd > (lastMs - firstMs) / Math.max(n - 1, 1) * 1.5) idx = -1; }
+      if (idx < 0) continue;
+      const x = xsArr[idx], y = ysArr[idx], buy = m.side === 'BUY';
+      const tri = svgEl('polygon', { class: buy ? 'mk-mark-buy' : 'mk-mark-sell', points: buy ? `${x},${y + 5} ${x - 5},${y + 14} ${x + 5},${y + 14}` : `${x},${y - 5} ${x - 5},${y - 14} ${x + 5},${y - 14}` });
+      const tt = svgEl('title');
+      tt.textContent = `${m.side} · ${m.label}`;
+      tri.append(tt);
+      svg.append(tri);
     }
 
     // last price line, tag and pulse

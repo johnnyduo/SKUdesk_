@@ -58,6 +58,7 @@ export const summary = (a: Analysis) => ({
   identical: a.gate.identical, considered: a.gate.considered, flagged: a.flagged?.length ?? 0,
   thumbnail: (a.buy ?? a.identical[0])?.offer.thumbnail ?? null,
   buy: a.buy ? { seller: a.buy.offer.seller, landedCents: a.buy.landedCents } : null,
+  retailCents: a.retailCents ?? null,
   netCents: a.arbitrage?.netCents ?? null,
   marginBps: a.arbitrage?.marginBps ?? null,
   proposalId: a.proposalId,
