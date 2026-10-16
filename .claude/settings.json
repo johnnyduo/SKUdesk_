@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p ~/secure)",
+      "Bash(chmod 700 ~/secure)",
+      "Bash(chmod 600 ~/secure/skudesk-merchant-sa.json)",
+      "Bash(awk '{print $1,$5,$9}')"
+    ]
+  }
+}

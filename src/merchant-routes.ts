@@ -168,7 +168,7 @@ export function createMerchantRoutes(deps: MerchantDeps, io: Io) {
       if (!a || !a.buy) { io.send(res, 409, { error: 'The check behind this proposal is no longer available.' }); return true; }
       if (a.currency !== 'USD') { io.send(res, 422, { error: `Listings go to the ${c.country} store in USD; this product was priced in ${a.currency}.` }); return true; }
       const offered = typeof b.listPriceCents === 'number' ? b.listPriceCents : a.arbitrage?.sellReference.priceCents;
-      if (!Number.isSafeInteger(offered) || (offered as number) < 1 || (offered as number) > MAX_PRICE_CENTS) { io.send(res, 400, { error: 'Give a list price in whole cents.' }); return true; }
+      if (!Number.isSafeInteger(offered) || (offered as number) < 1 || (offered as number) > MAX_PRICE_CENTS) { io.send(res, 400, { error: typeof b.listPriceCents === 'number' ? 'The list price has to be a whole number of cents between 1 cent and $1,000,000.' : 'This check has no second identical offer to price a resale against, so enter a list price in dollars.' , code: 'LIST_PRICE' }); return true; }
       const title = normalizeTitle(a.buy.offer.title);
       if (!title) { io.send(res, 422, { error: 'The product title is empty after cleaning.' }); return true; }
       const offerId = `l-${p.id.replace(/[^a-f0-9]/g, '').slice(0, 16) || 'x'}`;

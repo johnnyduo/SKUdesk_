@@ -15,7 +15,7 @@ After a person approves a buy, the owner can list it for resale in their own <b>
 <form id="form" class="stack-sm" autocomplete="off">
 <div class="grid2 start">
 <label class="field"><span>Approved buy</span><select id="proposal" disabled></select></label>
-<label class="field"><span>List price (USD)</span><input id="price" inputmode="decimal" placeholder="the next cheapest identical price" disabled></label>
+<label class="field"><span>List price (USD)</span><input id="price" inputmode="decimal" placeholder="empty = the next cheapest identical offer" disabled></label>
 </div>
 <div class="actions"><button class="btn" type="submit" id="preview" disabled>Preview</button><button class="btn" type="button" id="publish" disabled>Send to Merchant Center</button></div>
 </form>
@@ -109,7 +109,10 @@ After a person approves a buy, the owner can list it for resale in their own <b>
         h('tr', {}, h('td', {}, 'Ready to send'), h('td', {}, r.configured ? 'yes' : `not yet: ${r.missing.join(', ')}`)))));
       $('msg').textContent = 'Preview only: nothing has been sent.';
       lock();
-    } catch (err) { $('msg').textContent = (err as Error).message; }
+    } catch (err) {
+      $('msg').textContent = (err as Error).message;
+      if ((err as any).body?.code === 'LIST_PRICE') ($('price') as HTMLInputElement).focus();
+    }
   });
   $('publish').addEventListener('click', async () => {
     try {

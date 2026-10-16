@@ -37,8 +37,17 @@ export function summaryCards(a: A): HTMLElement[] {
   const buy = a.buy
     ? h('div', { class: 'card' }, h('h3', {}, 'Buy'), h('div', { class: 'big' }, money(a.buy.landedCents, cur)), h('p', { class: 'muted sm' }, `landed at ${a.buy.offer.seller}`), stepsTable(a.buy.steps, cur, { label: 'landed cost', cents: a.buy.landedCents }))
     : h('div', { class: 'card' }, h('h3', {}, 'Buy'), h('p', { class: 'empty' }, 'No identical sealed item cleared the gate, so there is nothing safe to buy.'));
-  const sell = a.sell
-    ? h('div', { class: 'card' }, h('h3', {}, 'Sell'), h('div', { class: 'big' }, money(a.sell.listAtCents, cur)), h('p', { class: 'muted sm' }, 'cheapest identical price you must match'),
+  // The resale is priced at the next cheapest identical offer (the one the buyer would otherwise pick), which is what the arbitrage uses.
+  const step = (label: string): number => a.arbitrage?.steps.find((x: any) => x.label === label)?.cents ?? 0;
+  const sell = a.arbitrage
+    ? h('div', { class: 'card' }, h('h3', {}, 'Sell'), h('div', { class: 'big' }, money(a.arbitrage.sellReference.priceCents, cur)), h('p', { class: 'muted sm' }, `resale at the next cheapest identical price (${a.arbitrage.sellReference.seller})`),
+      h('table', { class: 'kv' }, h('tbody', {},
+        h('tr', { class: 'neg' }, h('td', {}, 'marketplace fee'), h('td', {}, `-${money(step('marketplace fee'), cur)}`)),
+        h('tr', { class: 'neg' }, h('td', {}, 'return reserve'), h('td', {}, `-${money(step('return reserve'), cur)}`)),
+        h('tr', { class: 'neg' }, h('td', {}, 'outbound shipping'), h('td', {}, `-${money(step('outbound shipping'), cur)}`)),
+        h('tr', { class: 'total' }, h('td', {}, 'you keep, before your purchase cost'), h('td', {}, money(a.arbitrage.sellReference.priceCents - step('marketplace fee') - step('return reserve') - step('outbound shipping'), cur))))))
+    : a.sell
+    ? h('div', { class: 'card' }, h('h3', {}, 'Sell'), h('div', { class: 'big' }, money(a.sell.listAtCents, cur)), h('p', { class: 'muted sm' }, 'the only identical price, so nothing to resell against'),
       h('table', { class: 'kv' }, h('tbody', {},
         h('tr', { class: 'neg' }, h('td', {}, 'marketplace fee'), h('td', {}, `-${money(a.sell.feeCents, cur)}`)),
         h('tr', { class: 'neg' }, h('td', {}, 'return reserve'), h('td', {}, `-${money(a.sell.reserveCents, cur)}`)),
