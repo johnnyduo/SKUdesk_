@@ -465,4 +465,23 @@ describe('the site, end to end', () => {
     assert.equal(await page.getByRole('button', { name: 'Remove this product from the desk' }).count(), 0);
     await page.context().close();
   });
+  test('a checked product that has a 3D model shows the model, or its photo, and leaves the not-checked list', async () => {
+    await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'PlayStation 5 disc 1TB', market: 'us' }) })).text();
+    const { page, errors } = await open('/market/');
+    await page.waitForSelector('.mk-al .mk-ar');
+    const notChecked = async (): Promise<string> => (await page.locator('.mk-al').nth(1).textContent()) ?? '';
+    assert.doesNotMatch(await notChecked(), /PlayStation/, 'a product that has been checked is not listed as unchecked');
+    await page.locator('.mk-al').first().locator('.mk-ar', { hasText: 'PlayStation 5' }).click();
+    await page.waitForSelector('.mk-3dseg');
+    assert.equal(await page.locator('.mk-3dseg [aria-pressed=true]').textContent(), '3D model', 'a product with a model opens on the model');
+    await page.waitForSelector('.mk-p3d .p3d[data-model] canvas', { timeout: 15000 });
+    assert.match(await page.locator('.mk-stats').textContent() ?? '', /Cheapest landed/);
+    await page.getByRole('button', { name: 'Photo' }).click();
+    await page.waitForSelector('.mk-p3d .p3d-photo3d');
+    assert.equal(await page.locator('.mk-3dseg [aria-pressed=true]').textContent(), 'Photo');
+    await page.getByRole('button', { name: '3D model' }).click();
+    await page.waitForSelector('.mk-p3d .p3d[data-model]');
+    assert.deepEqual(errors, []);
+    await page.context().close();
+  });
 });

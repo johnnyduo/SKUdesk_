@@ -379,3 +379,6 @@
 .mk-links a.on{color:var(--neon);background:rgba(204,255,0,.08)}
 @media (max-width:1250px){.mk-links a{padding:0 7px;font-size:12px}}
 .mk-links{min-width:0;overflow-x:auto;scrollbar-width:none}
+
+.mk-3dseg{position:absolute;right:10px;bottom:10px;z-index:4;background:rgba(14,16,15,.75);backdrop-filter:blur(2px)}
+.mk-p3d{position:relative}

@@ -14,3 +14,13 @@ export const DEVICES: Device[] = [
 ];
 
 export const deviceLine = (d: Device): string => `${d.category} · 3D preview`;
+
+/** The 3D model that stands for a checked product: an exact match with a preview's query, or any iPhone, Pixel or Galaxy by name. */
+export function deviceForQuery(query: string): Device | undefined {
+  const q = query.trim().toLowerCase();
+  const exact = DEVICES.find((d) => d.query.toLowerCase() === q);
+  if (exact) return exact;
+  if (/\biphone\b/.test(q) && !/case|cover|protector/.test(q)) return DEVICES.find((d) => d.symbol === 'IP16PM');
+  if (/\b(pixel|galaxy)\b/.test(q) && !/case|cover|protector/.test(q)) return DEVICES.find((d) => d.symbol === 'S25');
+  return undefined;
+}

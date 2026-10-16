@@ -1,6 +1,6 @@
 import { $, api, h, int, money, safeLink, thumbSrc, verdictLabel, when } from './client.ts';
 import { createChart, type Pt } from './chart.ts';
-import { DEVICES, deviceLine, type Device } from './devices.ts';
+import { DEVICES, deviceForQuery, deviceLine, type Device } from './devices.ts';
 import { JOURNEY } from './journey.ts';
 import { createViewer, type Viewer } from './product3d.ts';
 import { approvalPanel } from './analysis-view.ts';
@@ -66,6 +66,7 @@ export function mountTerminal(root: HTMLElement): void {
   let prevKeys: Set<string> | null = null; // what the book showed last time, so rows that changed flash
   let prevFor = '';
   let viewer: Viewer | null = null;
+  let want3d: 'model' | 'photo' = 'photo';
   const liveBox = h('div', { class: 'mk-tkt-m', 'aria-live': 'polite' });
 
   // ── static frame ──
@@ -75,6 +76,7 @@ export function mountTerminal(root: HTMLElement): void {
     live: h('span', { class: 'mk-live', role: 'status' }, h('i', { 'aria-hidden': 'true' }), 'connecting'),
     list: h('div', { class: 'mk-al', role: 'list' }),
     devices: h('div', { class: 'mk-al', role: 'list' }),
+    devHead: h('div', { class: 'mk-ph' }, h('h2', {}, 'Not checked yet')),
     p3d: h('div', { class: 'mk-panel mk-p3d o2', 'data-panel': 'assets' }),
     facts: h('section', { class: 'mk-panel', 'data-panel': 'assets', 'aria-label': 'Product facts' }),
     stats: h('section', { class: 'mk-panel mk-stats', 'data-panel': 'all', 'aria-label': 'Summary' }),
@@ -112,7 +114,7 @@ export function mountTerminal(root: HTMLElement): void {
   const body = h('div', { class: 'mk-body' },
     h('div', { class: 'mk-col mk-col-l' }, el.p3d, el.facts,
       h('section', { class: 'mk-panel', 'data-panel': 'assets', 'aria-label': 'Checked products' }, h('div', { class: 'mk-ph' }, h('h2', {}, 'Checked products')), el.list,
-        h('div', { class: 'mk-ph' }, h('h2', {}, '3D previews')), el.devices)),
+        el.devHead, el.devices)),
     h('div', { class: 'mk-col mk-col-c' }, el.stats, el.chartp, el.recent),
     h('div', { class: 'mk-col mk-col-r' }, el.clock, el.book, el.tape));
 
@@ -130,6 +132,9 @@ export function mountTerminal(root: HTMLElement): void {
   // ── paint ──
   const cur = (): string => lot?.analysis.currency ?? rows.find((r) => r.key === selKey)?.currency ?? 'USD';
 
+  // A preview whose product has been checked is that product now; only the rest are listed as not checked.
+  const unchecked = (): Device[] => DEVICES.filter((d) => !rows.some((r) => r.query.toLowerCase() === d.query.toLowerCase()));
+
   function paintList(): void {
     const mkRow = (key: string, symbol: string, name: string, price: string, pc: HTMLElement | string, series: (number | null)[], dir: string, on: boolean, click: () => void): HTMLElement =>
       h('button', { type: 'button', class: `mk-ar${on ? ' on' : ''}`, role: 'listitem', 'aria-current': on ? 'true' : undefined, 'data-key': key, on: { click } },
@@ -140,7 +145,9 @@ export function mountTerminal(root: HTMLElement): void {
       const dir = ch ? dirOf(ch.pct) : 'flat';
       return mkRow(r.key, code(r.query), r.query, r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', ch ? pctStr(ch.pct) : '-', r.series.map((p: any) => p.buyLandedCents), dir, r.key === selKey && !selDevice, () => selectProduct(r.key));
     }) : [h('p', { class: 'mk-none' }, 'No products yet. Run a check on the desk.')]));
-    el.devices.replaceChildren(...DEVICES.map((d) => mkRow(d.symbol, d.symbol, d.name, 'not checked', '-', [], 'flat', selDevice?.symbol === d.symbol, () => selectDevice(d))));
+    const todo = unchecked();
+    el.devHead.hidden = el.devices.hidden = todo.length === 0;
+    el.devices.replaceChildren(...todo.map((d) => mkRow(d.symbol, d.symbol, d.name, 'not checked', '-', [], 'flat', selDevice?.symbol === d.symbol, () => selectDevice(d))));
   }
 
   let photo: PhotoViewer | null = null;
@@ -153,11 +160,20 @@ export function mountTerminal(root: HTMLElement): void {
       if (el.p3d.firstElementChild !== viewer.el) el.p3d.replaceChildren(viewer.el);
       return;
     }
-    viewer = null;
+    const dev = r ? deviceForQuery(r.query) : undefined;
+    const toggle = (): HTMLElement | null => (dev ? h('div', { class: 'mk-seg mk-3dseg', role: 'group', 'aria-label': 'Picture' }, ([['model', '3D model'], ['photo', 'Photo']] as const).map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String(want3d === k), 'data-pic': k, on: { click: () => { want3d = k; paintP3d(); } } }, l))) : null);
+    if (dev && r && want3d === 'model') {
+      photo?.dispose(); photo = null; photoKey = '';
+      const shown = { ...dev, symbol: code(r.query), name: r.query, sub: 'Generic 3D model' };
+      if (!viewer) viewer = createViewer(shown); else viewer.set(shown);
+      el.p3d.replaceChildren(viewer.el, toggle());
+      return;
+    }
+    viewer?.dispose(); viewer = null;
     const src = thumbSrc(r?.thumbnail ?? lot?.analysis.buy?.offer.thumbnail);
     const name = r?.query ?? '';
     const key = `${selKey}|${src ?? ''}`;
-    if (photo && photoKey === key && el.p3d.firstElementChild === photo.el) return; // same product: keep the cutout where the person turned it
+    if (photo && photoKey === key && el.p3d.firstElementChild === photo.el && Boolean(el.p3d.querySelector('.mk-3dseg')) === Boolean(dev)) return; // same product: keep the cutout where the person turned it
     photo?.dispose(); photo = null; photoKey = key;
     if (!src) {
       el.p3d.replaceChildren(h('div', { class: 'p3d p3d-photo', role: 'group', 'aria-label': name || 'Product' },
@@ -167,14 +183,14 @@ export function mountTerminal(root: HTMLElement): void {
       return;
     }
     photo = createPhotoViewer(src, r ? code(r.query) : '', name, 'New, sealed');
-    el.p3d.replaceChildren(photo.el);
+    el.p3d.replaceChildren(photo.el, toggle());
   }
 
   const curId = (): string => (selDevice ? selDevice.symbol : selKey);
   function paintPicker(): void {
     const items: PickItem[] = [
       ...rows.map((r): PickItem => { const ch = changeOf(r.series); return { id: r.key, symbol: code(r.query), name: r.query, sub: `${r.market.toUpperCase()} · ${r.identical}/${r.considered} identical`, price: r.buy ? money(r.buy.landedCents, r.currency) : 'no offer', change: ch ? pctStr(ch.pct) : '-', dir: ch ? dirOf(ch.pct) : 'flat', group: 'Checked products' }; }),
-      ...DEVICES.map((d): PickItem => ({ id: d.symbol, symbol: d.symbol, name: d.name, sub: d.category, price: 'not checked', change: '-', dir: 'flat', group: '3D previews' })),
+      ...unchecked().map((d): PickItem => ({ id: d.symbol, symbol: d.symbol, name: d.name, sub: d.category, price: 'not checked', change: '-', dir: 'flat', group: 'Not checked yet' })),
     ];
     picker.set(items, curId());
   }
@@ -379,6 +395,7 @@ export function mountTerminal(root: HTMLElement): void {
   }
   function selectProduct(key: string): void {
     selDevice = null; selKey = key; lastPrice = null; liveBox.replaceChildren();
+    { const row = rows.find((x) => x.key === key); want3d = row && DEVICES.some((d) => d.query.toLowerCase() === row.query.toLowerCase()) ? 'model' : 'photo'; }
     history.replaceState(null, '', `?key=${key}`);
     paintAll();
     void loadLot().then(paintAll);

@@ -52,7 +52,7 @@ echo "== cloud run (built from source, no Dockerfile)"
 gcloud run deploy skudesk --source . --region "$REGION" --project "$P" \
   --service-account "$SA" --allow-unauthenticated \
   --min-instances 0 --max-instances 3 --cpu 1 --memory 512Mi --timeout 120 --concurrency 40 \
-  --set-env-vars "GCP_PROJECT=${P},FIRESTORE_DATABASE=${DB},GEMINI_MODEL=${GEMINI_MODEL},MONTHLY_SEARCH_CAP=${MONTHLY_SEARCH_CAP:-100},SCAN_MAX=${SCAN_MAX:-3}${MERCHANT_ENV}" \
+  --set-env-vars "GCP_PROJECT=${P},FIRESTORE_DATABASE=${DB},GEMINI_MODEL=${GEMINI_MODEL},MONTHLY_SEARCH_CAP=${MONTHLY_SEARCH_CAP:-150},SCAN_MAX=${SCAN_MAX:-4}${MERCHANT_ENV}" \
   --set-env-vars "^@^WATCHLIST=${WATCHLIST}" \
   --set-secrets "GEMINI_API_KEY=skudesk-gemini-key:latest,SERPAPI_KEY=skudesk-serpapi-key:latest,SCAN_SECRET=skudesk-scan-secret:latest,OWNER_KEY=skudesk-owner-key:latest,EDGE_SECRET=skudesk-edge-secret:latest${EBAY_SECRETS}${MERCHANT_SECRETS}"
 URL="$(gcloud run services describe skudesk --region "$REGION" --project "$P" --format 'value(status.url)')"

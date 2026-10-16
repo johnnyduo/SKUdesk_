@@ -270,3 +270,26 @@ test('the owner can remove one check; its pending proposal and its price point g
   assert.equal((await del(OWNER)).status, 404);
   s.close();
 });
+
+test('a long watchlist is scanned in turn: the watches that waited longest go first', async () => {
+  const searched: string[] = [];
+  const store = new MemoryStore();
+  const app = createApp({
+    store, quota: new Quota(store, 20), scanSecret: 's3cret', ownerKey: 'owner-key', watchlist: [], scanMax: 2, sources: { serpapi: true, ebay: false }, storeKind: 'memory', siteDir,
+    agent: { search: async (q: string) => { searched.push(q); return { offers: [offer('A', 10000), offer('B', 12000)], fromCache: false }; }, engine: { compare: async () => identical }, store, model: 'm', limits: () => getLimits(store) },
+  });
+  await new Promise<void>((r) => app.listen(0, r));
+  const base = `http://127.0.0.1:${(app.address() as AddressInfo).port}`;
+  const add = (query: string) => fetch(`${base}/api/watches`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-skudesk-owner': 'owner-key' }, body: JSON.stringify({ query, market: 'us' }) });
+  for (const q of ['Phone One 128GB', 'Phone Two 128GB', 'Phone Three 128GB', 'Phone Four 128GB']) await add(q);
+  const scan = () => fetch(`${base}/api/jobs/scan`, { method: 'POST', headers: { 'x-skudesk-secret': 's3cret' } });
+  await scan();
+  assert.deepEqual(searched.splice(0), ['Phone One 128GB', 'Phone Two 128GB']);
+  await new Promise((r) => setTimeout(r, 5));
+  await scan();
+  assert.deepEqual(searched.splice(0), ['Phone Three 128GB', 'Phone Four 128GB']);
+  await new Promise((r) => setTimeout(r, 5));
+  await scan();
+  assert.deepEqual(searched.splice(0), ['Phone One 128GB', 'Phone Two 128GB'], 'the third scan starts the list again');
+  app.close();
+});

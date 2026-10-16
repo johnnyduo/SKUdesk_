@@ -127,7 +127,8 @@ export function createApp(deps: AppDeps): Server {
   const maxRunning = deps.maxConcurrent ?? 3;
 
   const scanWatches = async (): Promise<{ query: string; market: string; id?: string }[]> => {
-    const stored = (await listWatches(deps.store)).filter((w) => w.active);
+    // The watches that have gone longest without a scan go first, so a long list is covered in turn instead of the same few being repeated.
+    const stored = (await listWatches(deps.store)).filter((w) => w.active).sort((a, b) => (a.lastRunAt ?? '').localeCompare(b.lastRunAt ?? ''));
     const seen = new Set(stored.map((w) => `${w.query.toLowerCase()}|${w.market}`));
     const extra = deps.watchlist.filter((w) => !seen.has(`${w.query.toLowerCase()}|${w.market}`));
     return [...stored.map((w) => ({ query: w.query, market: w.market, id: w.id })), ...extra].slice(0, deps.scanMax ?? 3);

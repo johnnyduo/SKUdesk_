@@ -42,9 +42,9 @@ const gradFrom = 4;
 <script>
 import { startShowcase } from '../../showcase/showcase.ts';
 import { api, h, money, thumbSrc, verdictLabel } from '../../lib/client.ts';
-import { DEVICES, deviceLine } from '../../lib/devices.ts';
+import { DEVICES, deviceForQuery, deviceLine } from '../../lib/devices.ts';
 
-type Item = { key: string; src: string; name: string; tag: string; tagNo: boolean; line: string; net: string; href: string; go: string };
+type Item = { key: string; art?: boolean; src: string; name: string; tag: string; tagNo: boolean; line: string; net: string; href: string; go: string };
 
 const root = document.querySelector<HTMLElement>('.sc');
 if (root) {
@@ -53,15 +53,20 @@ if (root) {
     return { key: d.symbol, src: d.art, name: d.name, tag: 'Not checked yet', tagNo: true, line: deviceLine(d), net: 'Run a check to see live offers', href: `/app/?q=${encodeURIComponent(d.query)}`, go: 'Check this product →' };
   };
   api<any[]>('/api/products').catch(() => [] as any[]).then(async (rows) => {
-    const real: Item[] = rows.filter((r) => r.thumbnail).map((it) => {
+    // A checked product that has a 3D model is drawn as the model (art); the others keep their photo. Previews with no check yet fill the rest.
+    const checked = rows.filter((r) => r.thumbnail);
+    const modelled = new Set<string>();
+    const real: Item[] = checked.map((it) => {
       const line = it.buy ? `Cheapest identical: ${money(it.buy.landedCents, it.currency)} at ${it.buy.seller}` : `${it.considered} listings checked, none identical`;
       const net = it.netCents !== null && it.verdict !== 'unverified' ? (it.netCents >= 0 ? `Net +${money(it.netCents, it.currency)} after all costs` : `Resale would lose ${money(-it.netCents, it.currency)}`) : verdictLabel(it.verdict);
-      return { key: it.key, src: thumbSrc(it.thumbnail)!, name: it.query, tag: it.identical ? `✓ ${it.identical} identical of ${it.considered}` : '✗ Nothing provably the same', tagNo: !it.identical, line, net, href: `/market/?key=${it.key}`, go: 'Open this product →' };
+      const dv = DEVICES.find((d) => d.query.toLowerCase() === it.query.toLowerCase());
+      if (dv) modelled.add(dv.symbol);
+      return { key: it.key, src: dv ? dv.art : thumbSrc(it.thumbnail)!, art: Boolean(dv), name: it.query, tag: it.identical ? `✓ ${it.identical} identical of ${it.considered}` : '✗ Nothing provably the same', tagNo: !it.identical, line, net, href: `/market/?key=${it.key}`, go: 'Open this product →' };
     });
-    const dev: Item[] = DEVICES.map((d) => fromDevice(d.symbol));
+    const dev: Item[] = DEVICES.filter((d) => !modelled.has(d.symbol)).map((d) => fromDevice(d.symbol));
     // The pool is bigger than the ring, so each visit shows a different six: half checked products, half reference devices, alternating.
     const shuffle = <T,>(a: T[]): T[] => { const x = [...a]; for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
-    const R = shuffle(real), D = shuffle(dev);
+    const R = shuffle(real.filter((x) => !x.art)), D = shuffle([...dev, ...real.filter((x) => x.art)]);
     const nReal = Math.min(R.length, 3), nDev = Math.min(D.length, 6 - nReal);
     const first = Math.random() < 0.5;
     const items: Item[] = [];
