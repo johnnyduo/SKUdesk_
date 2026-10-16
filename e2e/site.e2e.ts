@@ -75,7 +75,7 @@ before(async () => {
     agent: {
       store, model: 'stub',
       vision: { check: async (_q: string, o: Offer) => (o.thumbnail ? { verdict: 'matches' as const, seen: 'a boxed set on a white background', reasons: [] } : null) },
-      search: async (q: string) => ({ offers: /boxed/i.test(q) ? BOXED : OFFERS, fromCache: false }),
+      search: async (q: string) => ({ offers: /nothing/i.test(q) ? OFFERS.filter((o) => /Parts/.test(o.seller)) : /boxed/i.test(q) ? BOXED : OFFERS, fromCache: false }),
       engine: { compare: async (_a, b) => (await new Promise((r) => setTimeout(r, 250 * (++judged % 4))), /light kit/i.test(b.title)
         ? { verdict: 'different', confidence: 0.99, reasons: ['accessory'], mismatches: ['product type'] }
         : { verdict: 'identical', confidence: 0.99, reasons: ['same set number'], mismatches: [], evidence: { brand: 'LEGO', brandQuoteA: 'LEGO', brandQuoteB: 'LEGO', idA: '10294', idB: '10294' } }) },
@@ -466,7 +466,7 @@ describe('the site, end to end', () => {
     await page.context().close();
   });
   test('a checked product that has a 3D model shows the model, or its photo, and leaves the not-checked list', async () => {
-    await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'PlayStation 5 disc 1TB', market: 'us' }) })).text();
+    await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'Sony PlayStation 5 Slim Disc Edition 1TB', market: 'us' }) })).text();
     const { page, errors } = await open('/market/');
     await page.waitForSelector('.mk-al .mk-ar');
     const notChecked = async (): Promise<string> => (await page.locator('.mk-al').nth(1).textContent()) ?? '';
@@ -482,6 +482,30 @@ describe('the site, end to end', () => {
     await page.getByRole('button', { name: '3D model' }).click();
     await page.waitForSelector('.mk-p3d .p3d[data-model]');
     assert.deepEqual(errors, []);
+    await page.context().close();
+  });
+  test('a product with no identical offer is not an empty page: the market shows what the gate turned down and why', async () => {
+    await (await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: 'LEGO 10294 nothing identical', market: 'us' }) })).text();
+    const { page, errors } = await open('/market/');
+    await page.waitForSelector('.mk-al .mk-ar');
+    await page.locator('[data-testid=product-picker]').click();
+    await page.locator('.mk-pk-o').filter({ has: page.getByText('LEGO 10294 nothing identical', { exact: true }) }).click();
+    await page.waitForSelector('[data-testid=rejected] .mk-rej');
+    const book = (await page.locator('.mk-bookp').textContent()) ?? '';
+    assert.doesNotMatch(book, /null/, 'no stray text in the book');
+    assert.match(book, /none is provably the product/);
+    assert.match(await page.locator('[data-testid=rejected] .mk-why').first().textContent() ?? '', /not the same: product type/);
+    assert.deepEqual(errors, []);
+    await page.context().close();
+  });
+
+  test('a product that has nothing but its 3D model still opens on the model', async () => {
+    const { page } = await open('/market/?key=');
+    await page.waitForSelector('.mk-al .mk-ar');
+    await page.locator('[data-testid=product-picker]').click();
+    await page.locator('.mk-pk-o[data-symbol="MBA13"]').click();
+    await page.waitForSelector('.mk-p3d .p3d[data-model] canvas', { timeout: 15000 });
+    assert.match(await page.locator('.mk-stats').textContent() ?? '', /not checked/);
     await page.context().close();
   });
 });

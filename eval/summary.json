@@ -1,11 +1,11 @@
 {
   "model": "gemini-3.5-flash-lite",
-  "pairs": 60,
-  "exact": 56,
+  "pairs": 67,
+  "exact": 64,
   "falseIdentical": 0,
-  "missedIdentical": 1,
+  "missedIdentical": 0,
   "engineErrors": 0,
-  "ranAt": "2026-10-16T09:14:19.347Z",
+  "ranAt": "2026-10-16T14:15:06.545Z",
   "categories": [
     "same-set-reworded",
     "same-name-different-set",
@@ -30,6 +30,8 @@
     "phone-fake",
     "phone-injection",
     "phone-thai",
-    "phone-bundle"
+    "phone-bundle",
+    "device-same",
+    "device-model"
   ]
 }

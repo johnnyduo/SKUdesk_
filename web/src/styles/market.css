@@ -382,3 +382,8 @@
 
 .mk-3dseg{position:absolute;right:10px;bottom:10px;z-index:4;background:rgba(14,16,15,.75);backdrop-filter:blur(2px)}
 .mk-p3d{position:relative}
+
+.mk-rej{grid-template-columns:70px minmax(0,1fr) minmax(0,1.1fr);align-items:start;padding-top:5px;padding-bottom:5px}
+.mk-rej .mk-who{white-space:normal;overflow:visible}.mk-rej .mk-who small{display:block;font-size:10.5px;color:var(--dim);line-height:1.25}
+.mk-why{font-size:11.5px;color:var(--amber);line-height:1.3}
+.mk-rejects{max-height:none;overflow:visible}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPrompt, parseResult, passesGate, createIdentityEngine, verifyEvidence, type IdentityResult, type Listing } from '../src/identity.ts';
+import { buildPrompt, idsAgree, parseResult, passesGate, createIdentityEngine, verifyEvidence, type IdentityResult, type Listing } from '../src/identity.ts';
 
 const a: Listing = { id: 'a', title: 'LEGO 75192 Millennium Falcon UCS', condition: 'new_sealed' };
 const b: Listing = { id: 'b', title: 'LEGO Star Wars Ultimate Collector Series Millennium Falcon 75192', condition: 'new_sealed' };
@@ -156,4 +156,32 @@ test('another script for the same brand is accepted as its name', () => {
   const r = verifyEvidence({ id: 'a', title: 'レゴ アイコン コロッセオ 10276 新品未開封', condition: 'new_sealed' }, { id: 'b', title: 'LEGO Icons Colosseum 10276', condition: 'new_sealed' },
     { verdict: 'identical', confidence: 1, reasons: [], mismatches: [], evidence: { brand: 'LEGO', brandQuoteA: 'レゴ', brandQuoteB: 'LEGO', idA: '10276', idB: '10276' } });
   assert.equal(r.verdict, 'identical');
+});
+
+test('ways of writing one model agree, different models do not', () => {
+  assert.equal(idsAgree('AirPods Pro 2', 'AirPods Pro 2nd Gen'), true);
+  assert.equal(idsAgree('iPhone 16 Pro', 'Apple iPhone 16 Pro'), true);
+  assert.equal(idsAgree('75192', '75192'), true);
+  assert.equal(idsAgree('75192', '75193'), false);
+  assert.equal(idsAgree('AirPods Pro', 'AirPods Pro 2'), false);
+  assert.equal(idsAgree('Pixel 9', 'Pixel 9a'), false);
+  assert.equal(idsAgree('iPhone 16', 'iPhone 16e'), false);
+  assert.equal(idsAgree('Watch Series 10', 'Watch Series 9'), false);
+  assert.equal(idsAgree('Galaxy S25', 'Galaxy S25 Ultra'), true, 'the tier is judged separately');
+});
+
+test('marketing words further along a title are not read as a model tier', () => {
+  const r = verifyEvidence(phone('Samsung Galaxy S25 256GB'), phone('Samsung Galaxy S25 SM-S931U1 256 GB Smartphone - 6.2" Dynamic AMOLED 2X Full HD Plus 2340 x 1080'),
+    { verdict: 'identical', confidence: 0.98, reasons: [], mismatches: [], evidence: { brand: 'Samsung', brandQuoteA: 'Samsung', brandQuoteB: 'Samsung', idA: 'Galaxy S25', idB: 'Galaxy S25', variantA: null, variantB: null } });
+  assert.equal(r.verdict, 'identical');
+});
+
+test('Slim and Edge are different models from the plain one', () => {
+  assert.equal(verifyEvidence(phone('Sony PlayStation 5 Disc 1TB'), phone('Sony PlayStation 5 Slim Disc 1TB'), { verdict: 'identical', confidence: 1, reasons: [], mismatches: [], evidence: { brand: 'Sony', brandQuoteA: 'Sony', brandQuoteB: 'Sony', idA: 'PlayStation 5', idB: 'PlayStation 5' } }).verdict, 'different');
+  assert.equal(verifyEvidence(phone('Samsung Galaxy S25 256GB'), phone('Samsung Galaxy S25 Edge 256GB'), { verdict: 'identical', confidence: 1, reasons: [], mismatches: [], evidence: { brand: 'Samsung', brandQuoteA: 'Samsung', brandQuoteB: 'Samsung', idA: 'Galaxy S25', idB: 'Galaxy S25' } }).verdict, 'different');
+});
+
+test('a model code added to the name does not make it another model', () => {
+  assert.equal(idsAgree('Galaxy S25', 'Galaxy S25 SM-S931U1'), true);
+  assert.equal(idsAgree('AirPods Pro', 'AirPods Pro 2'), false);
 });

@@ -16,7 +16,14 @@ type Row = any; // /api/products row
 type Lot = { analysis: any; series: any[] };
 
 const POLL_MS = 20000;
-const code = (query: string): string => query.match(/\b\d{4,6}\b/)?.[0] ?? query.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase();
+// A short ticker for a product: its set number when it has one (42143), otherwise the start of each word and the numbers (IP16, AIPR2).
+const BRANDS = /\b(apple|google|samsung|sony|nintendo|microsoft|lego|the|with|usb-c|gps|unlocked|new)\b/gi;
+const code = (query: string): string => {
+  const set = query.match(/\b\d{4,6}\b/)?.[0];
+  if (set) return set;
+  const words = query.replace(BRANDS, ' ').replace(/\b\d{2,4}\s?(gb|tb)\b/gi, ' ').split(/[^A-Za-z0-9]+/).filter(Boolean);
+  return words.map((w) => (/^\d+$/.test(w) ? w : w.slice(0, 2))).join('').slice(0, 6).toUpperCase() || query.slice(0, 4).toUpperCase();
+};
 const pctStr = (p: number): string => `${p > 0 ? '+' : ''}${p.toFixed(2)}%`;
 const dirOf = (p: number): string => (p > 0.005 ? 'up' : p < -0.005 ? 'down' : 'flat');
 const ageText = (iso: string): string => {
@@ -162,7 +169,8 @@ export function mountTerminal(root: HTMLElement): void {
     }
     const dev = r ? deviceForQuery(r.query) : undefined;
     const toggle = (): HTMLElement | null => (dev ? h('div', { class: 'mk-seg mk-3dseg', role: 'group', 'aria-label': 'Picture' }, ([['model', '3D model'], ['photo', 'Photo']] as const).map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String(want3d === k), 'data-pic': k, on: { click: () => { want3d = k; paintP3d(); } } }, l))) : null);
-    if (dev && r && want3d === 'model') {
+    const hasPhoto = Boolean(thumbSrc(r?.thumbnail ?? lot?.analysis.buy?.offer.thumbnail));
+    if (dev && r && (want3d === 'model' || !hasPhoto)) {
       photo?.dispose(); photo = null; photoKey = '';
       const shown = { ...dev, symbol: code(r.query), name: r.query, sub: 'Generic 3D model' };
       if (!viewer) viewer = createViewer(shown); else viewer.set(shown);
@@ -337,7 +345,23 @@ export function mountTerminal(root: HTMLElement): void {
       : win
         ? `${win.policy.name} bids ${money(win.ceilingCents!, cc)}, which reaches the best ask. ${bids.find((b) => b.policy.id === 'live')?.crosses ? 'The live agent clears its own margin floor too, so it files a proposal for a person to approve.' : 'Only the looser policies reach it: the live agent keeps its margin floor and files nothing.'}`
         : `No bid reaches the best ask. It sits ${spread === null ? '' : `${spread.toFixed(1)}% `}above the highest bid, because fees, returns and postage take about ${(((a.assumptions.marketplaceFeeBps + a.assumptions.returnReserveBps) / 100)).toFixed(0)}% of a resale.`;
-    el.book.replaceChildren(
+    if (!a.identical.length) {
+      // Nothing passed: show what the gate turned down and why, so the answer "no" can be read and checked.
+      const why = (g: any): string => `${g.verdict === 'uncertain' ? 'not sure' : 'not the same'}: ${String(g.mismatches?.[0] ?? g.reasons?.[0] ?? '').replace(/^evidence check failed: /, '').slice(0, 64)}`;
+      const turned = [...(a.rejected ?? [])].sort((x: any, y: any) => x.offer.priceCents - y.offer.priceCents).slice(0, 12).map((g: any) => h('div', { class: 'mk-tr mk-rej', title: g.offer.title },
+        h('span', { class: 'n dim' }, money(g.offer.priceCents, cc)),
+        h('span', { class: 'mk-who' }, g.offer.url ? safeLink(g.offer.url, g.offer.seller) : g.offer.seller, h('small', {}, g.offer.title.slice(0, 70))),
+        h('span', { class: 'mk-why' }, why(g))));
+      el.book.replaceChildren(
+        h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book'), h('span', { class: 'mk-ph-r', 'data-age': a.createdAt, 'data-testid': 'book-age' }, ageText(a.createdAt))),
+        h('p', { class: 'mk-bk-verdict' }, `${a.gate.considered} listings reached the gate and none is provably the product. With no identical offer there is nothing to bid on, and the agent buys nothing.`),
+        h('div', { class: 'mk-sidehead' }, 'What the gate turned down, cheapest first'),
+        h('div', { class: 'mk-tbody mk-rejects', 'data-testid': 'rejected' }, turned.length ? turned : [h('p', { class: 'mk-none' }, 'No listings were kept for this check.')]),
+        ticket);
+      prevKeys = new Set(); prevFor = selKey;
+      return;
+    }
+    el.book.replaceChildren(...[
       h('div', { class: 'mk-ph' }, h('h2', {}, 'Offer book'), h('span', { class: 'mk-ph-r', 'data-age': a.createdAt, 'data-testid': 'book-age' }, ageText(a.createdAt))),
       h('div', { class: 'mk-th mk-bkh' }, h('span', {}, 'Landed'), h('span', {}, 'Seller'), h('span', {}, 'vs avg'), h('span', {}, 'Depth')),
       h('div', { class: 'mk-sidehead' }, 'Asks: what sellers want, via Google Shopping'),
@@ -349,7 +373,7 @@ export function mountTerminal(root: HTMLElement): void {
       setAside.length ? h('div', { class: 'mk-sidehead' }, 'Set aside by the identity gate') : null,
       setAside.length ? h('div', { class: 'mk-tbody' }, setAside) : null,
       h('div', { class: 'mk-bk-sum' }, best ? h('span', {}, 'Best ask ', h('b', { class: 'n' }, money(best.landedCents, cc)), bestPct === null ? '' : ` · ${pctStr(bestPct)} vs retail`) : h('span', {}, 'No best ask'), h('span', { class: 'dim' }, `${a.identical.length} identical · ${(a.flagged ?? []).length} set aside`)),
-      ticket);
+      ticket].filter(Boolean) as HTMLElement[]);
     prevKeys = keys; prevFor = selKey;
   }
 

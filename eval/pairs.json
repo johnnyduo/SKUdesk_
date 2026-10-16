@@ -960,5 +960,117 @@
       "condition": "new_sealed"
     },
     "note": "bundle with accessories"
+  },
+  {
+    "id": "p61",
+    "category": "device-same",
+    "expected": "identical",
+    "a": {
+      "id": "a61",
+      "title": "Apple AirPods Pro 2 USB-C",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b61",
+      "title": "Apple AirPods Pro (2nd Generation) with MagSafe Charging Case USB-C",
+      "condition": "new_sealed"
+    },
+    "note": "generation written two ways"
+  },
+  {
+    "id": "p62",
+    "category": "device-model",
+    "expected": "different",
+    "a": {
+      "id": "a62",
+      "title": "Apple AirPods Pro 2 USB-C",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b62",
+      "title": "Apple AirPods Pro with MagSafe Charging Case",
+      "condition": "new_sealed"
+    },
+    "note": "first generation, not the 2"
+  },
+  {
+    "id": "p63",
+    "category": "device-model",
+    "expected": "different",
+    "a": {
+      "id": "a63",
+      "title": "Sony PlayStation 5 Disc Edition 1TB",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b63",
+      "title": "Sony PlayStation 5 Slim Disc Edition 1TB",
+      "condition": "new_sealed"
+    },
+    "note": "original vs Slim"
+  },
+  {
+    "id": "p64",
+    "category": "phone-tier",
+    "expected": "different",
+    "a": {
+      "id": "a64",
+      "title": "Samsung Galaxy S25 256GB",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b64",
+      "title": "Samsung Galaxy S25 Edge 256GB",
+      "condition": "new_sealed"
+    },
+    "note": "S25 vs S25 Edge"
+  },
+  {
+    "id": "p65",
+    "category": "phone-same",
+    "expected": "identical",
+    "a": {
+      "id": "a65",
+      "title": "Samsung Galaxy S25 256GB",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b65",
+      "title": "Samsung Galaxy S25 SM-S931U1 256 GB Smartphone - 6.2\" Dynamic AMOLED 2X Full HD Plus 2340 x 1080",
+      "condition": "new_sealed"
+    },
+    "note": "real title: the marketing words say Plus but the phone is the S25"
+  },
+  {
+    "id": "p66",
+    "category": "device-same",
+    "expected": "identical",
+    "a": {
+      "id": "a66",
+      "title": "Nintendo Switch OLED",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b66",
+      "title": "Nintendo Switch - OLED Model with White Joy-Con",
+      "condition": "new_sealed"
+    },
+    "note": "same console, longer title"
+  },
+  {
+    "id": "p67",
+    "category": "device-model",
+    "expected": "different",
+    "a": {
+      "id": "a67",
+      "title": "Nintendo Switch OLED",
+      "condition": "new_sealed"
+    },
+    "b": {
+      "id": "b67",
+      "title": "Nintendo Switch Lite Console",
+      "condition": "new_sealed"
+    },
+    "note": "Lite is a different console"
   }
 ]

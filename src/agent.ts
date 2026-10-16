@@ -1,5 +1,5 @@
 import { arbitrage, landed, type BuyCost } from './economics.ts';
-import { buildPrompt, passesGate, type IdentityResult, type Listing } from './identity.ts';
+import { IDENTITY_VERSION, buildPrompt, passesGate, type IdentityResult, type Listing } from './identity.ts';
 import { MARKETS } from './serpapi.ts';
 import { hashKey, type Store } from './store.ts';
 import type { Analysis, AnalyzeEvent, ArbitrageView, Assumptions, Flagged, Gated, Offer, Priced, Proposal, SellView } from './types.ts';
@@ -54,7 +54,7 @@ const isEngineError = (r: IdentityResult): boolean => r.mismatches.some((m) => m
 
 // Same pair, same prompt, same model -> same answer, so verdicts are cached. Engine errors are never cached.
 async function compareCached(deps: AgentDeps, a: Listing, b: Listing): Promise<IdentityResult> {
-  const id = hashKey(`${deps.model}|${buildPrompt(a, b)}`);
+  const id = hashKey(`${deps.model}|v${IDENTITY_VERSION}|${buildPrompt(a, b)}`);
   const hit = await deps.store.get<{ result: IdentityResult; expiresAt: number }>('identity', id);
   const now = (deps.now ?? (() => new Date()))().getTime();
   if (hit && hit.expiresAt > now) return hit.result;

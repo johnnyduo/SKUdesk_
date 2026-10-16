@@ -38,6 +38,8 @@ export interface IdentityResult {
 export type Generate = (prompt: string) => Promise<string>;
 
 export const MIN_CONFIDENCE = 0.9;
+// Bump when the checks around the model's answer change, so verdicts cached under the old checks are asked again.
+export const IDENTITY_VERSION = 3;
 
 const VERDICTS: readonly string[] = ['identical', 'different', 'uncertain'];
 
@@ -112,12 +114,27 @@ const namesBrand = (brand: string, quote: string): boolean => {
   return q.includes(b) || (q.length >= 3 && b.includes(q)) || /[^\u0000-\u024f]/.test(quote);
 };
 
+// Two ways of writing one model agree when one is the other with only words added: "AirPods Pro 2" and "AirPods Pro 2nd Gen" do, "75192" and
+// "75193", "AirPods Pro" and "AirPods Pro 2" or "Pixel 9" and "Pixel 9a" do not. A tier word that was added (Pro Max, Ultra) is judged separately below.
+const idTokens = (s: string): string[] => s.toLowerCase().replace(/(\d+)(st|nd|rd|th)\b/g, '$1').replace(/\b(gen|generation|the|new|with|by|apple|samsung|google|sony|nintendo)\b/g, ' ').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+export function idsAgree(x: string, y: string): boolean {
+  const a = idTokens(x), b = idTokens(y);
+  if (!a.length || !b.length) return false;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  if (!short.every((t) => long.includes(t))) return false;
+  return long.filter((t) => !short.includes(t)).every((t) => !/^\d+$/.test(t)); // an added bare number ("Pro" against "Pro 2") is another model; a model code (SM-S931U1) is not
+}
+
 // Facts code can read without a model. Anything the text states twice must agree, or the pair is not identical.
 const STORAGE = /\b(\d{1,4})\s?(gb|tb)\b(?!\s*(?:ram|memory))/gi;
-const TIERS = /\b(pro max|pro xl|pro fold|pro|plus|ultra|mini|xl|fold|max|lite|fe)\b/gi;
+const TIERS = /\b(pro max|pro xl|pro fold|pro|plus|ultra|mini|xl|fold|flip|max|lite|fe|edge|slim|oled|digital|air|neo|active)\b/gi;
 // Sizes under 32 GB are RAM in every phone sold today, so they are not read as storage.
 const storageOf = (l: Listing): string[] => [...new Set([...`${l.title} ${l.description ?? ''}`.matchAll(STORAGE)].map((m) => Number(m[1]) * (m[2].toLowerCase() === 'tb' ? 1024 : 1)).filter((n) => n >= 32).map(String))].sort();
-const tiersOf = (l: Listing): string[] => [...new Set([...l.title.matchAll(TIERS)].map((m) => m[1].toLowerCase()))].sort();
+// Only the start of a title names the model; marketing further on ("Full HD Plus", "Pro camera") must not count as a tier.
+const tiersOf = (l: Listing): string[] => {
+  const head = l.title.replace(/\b(full\s?hd|fhd|qhd|wqhd|hd|amoled|oled)\s*(\+|plus)/gi, ' ').split(/\s+/).slice(0, 12).join(' ');
+  return [...new Set([...head.matchAll(TIERS)].map((m) => m[1].toLowerCase()))].sort();
+};
 
 function hardFacts(a: Listing, b: Listing): { different: string[]; unsure: string[] } {
   const different: string[] = [], unsure: string[] = [];
@@ -143,7 +160,7 @@ export function verifyEvidence(a: Listing, b: Listing, r: IdentityResult): Ident
     else if (!namesBrand(e.brand, e.brandQuoteB)) problems.push('the words quoted from listing B do not name the brand');
     if (!e.idA || !textOf(a).includes(squash(e.idA))) problems.push('identifier not found in listing A');
     if (!e.idB || !textOf(b).includes(squash(e.idB))) problems.push('identifier not found in listing B');
-    if (e.idA && e.idB && alnum(e.idA) !== alnum(e.idB)) problems.push('identifiers differ');
+    if (e.idA && e.idB && !idsAgree(e.idA, e.idB)) problems.push('identifiers differ');
   }
   const facts = hardFacts(a, b);
   if (facts.different.length) return { ...r, verdict: 'different', confidence: Math.max(r.confidence, 0.95), mismatches: [...r.mismatches, ...facts.different] };
