@@ -23,6 +23,20 @@ export function cutout(img: HTMLImageElement): HTMLCanvasElement | null {
   for (let x = 0; x < W; x++) { edge(x, 0); edge(x, H - 1); }
   for (let y = 0; y < H; y++) { edge(0, y); edge(W - 1, y); }
   r /= n; gg /= n; b /= n;
+  // Most product photos sit on white. If any real part of the border is white, treat white as the backdrop so a dark photo with thin white margins is still trimmed.
+  let white = 0;
+  const near = (x: number, y: number): void => { const i = (y * W + x) * 4; if (px[i] > 238 && px[i + 1] > 238 && px[i + 2] > 238) white++; };
+  for (let x = 0; x < W; x++) { near(x, 0); near(x, H - 1); }
+  for (let y = 0; y < H; y++) { near(0, y); near(W - 1, y); }
+  if (white / n > 0.03) { r = gg = b = 255; }
+  else {
+    // no white to go by: only trim a backdrop that is one flat colour all round
+    let spread = 0;
+    const flat = (x: number, y: number): void => { const i = (y * W + x) * 4; spread += Math.hypot(px[i] - r, px[i + 1] - gg, px[i + 2] - b); };
+    for (let x = 0; x < W; x++) { flat(x, 0); flat(x, H - 1); }
+    for (let y = 0; y < H; y++) { flat(0, y); flat(W - 1, y); }
+    if (spread / n > 14) return null;
+  }
   const dist = (i: number): number => Math.hypot(px[i] - r, px[i + 1] - gg, px[i + 2] - b);
   const LOW = 22, HIGH = 60;
   const bg = new Uint8Array(W * H);
@@ -44,7 +58,7 @@ export function cutout(img: HTMLImageElement): HTMLCanvasElement | null {
     if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
   }
   const frac = clear / (W * H);
-  if (frac < 0.06 || frac > 0.97 || maxX <= minX || maxY <= minY) return null; // no plain backdrop to remove, or nothing left
+  if (frac < 0.004 || frac > 0.97 || maxX <= minX || maxY <= minY) return null; // no plain backdrop to remove, or nothing left
   g.putImageData(data, 0, 0);
   const pad = 3, cx = Math.max(0, minX - pad), cy = Math.max(0, minY - pad), cw = Math.min(W - cx, maxX - minX + 1 + pad * 2), ch = Math.min(H - cy, maxY - minY + 1 + pad * 2);
   const out = document.createElement('canvas');
