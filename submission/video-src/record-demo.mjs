@@ -1,6 +1,7 @@
 import { chromium } from '/Library/WebServer/Documents/SKUdesk/node_modules/playwright-core/index.mjs';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 const [,, OUT, BASE = 'https://skudesk.lol'] = process.argv;
 const VOICE = process.env.TTS_VOICE || 'en-US-Chirp3-HD-Aoede';
 mkdirSync(OUT, { recursive: true });
@@ -15,20 +16,21 @@ const mark = async (p, sel, label) => {
     const b = await loc.boundingBox();
     if (!b) return;
     const x = Math.max(0, b.x), y = Math.max(0, b.y);
-    const w = Math.min(1440, b.x + b.width) - x, h = Math.min(900, b.y + b.height) - y;
+    const w = Math.min(1920, b.x + b.width) - x, h = Math.min(1080, b.y + b.height) - y;
     if (w > 40 && h > 20) rects.push({ t: clock(), x, y, w, h, label });
   } catch { /* a missing target only means no zoom there */ }
 };
 const card = (h1, h2, h3 = '') => `<style>html{background:#000}</style><body style="margin:0;min-height:100vh;background:#000;color:#fff;font-family:Helvetica,Arial,sans-serif;display:grid;place-items:center;height:100vh;text-align:center"><div><div style="font-size:92px;font-weight:700">${h1}</div><div style="font-size:34px;margin-top:22px;color:#ccff00">${h2}</div><div style="font-size:24px;margin-top:40px;color:#9aa3b2">${h3}</div></div></body>`;
 const type = async (p, q) => { await p.click('#query'); await p.locator('#query').pressSequentially(q, { delay: 65 }); await sleep(500); await p.click('#desk form button[type=submit]'); };
 
+const VO = JSON.parse(readFileSync(new URL('./script3.json', import.meta.url)));
 const SEGS = [
   { id: 'open', say: 'SKUdesk. One agent that finds the cheapest price, works out what a resale would keep, and checks for arbitrage. Only on the exact same product.',
     run: async (p) => { await p.setContent(card('SKUdesk', 'One price you can trust, only for the same item.', 'Chonlarnatt Poonchattakarn · Ploypitcha Boontavipitak')); } },
   { id: 'why', say: "Here's the problem. A cheap listing is only a deal if it's the same item. Price sites mix up an iPhone 16 and a 16 Pro, or a phone and its case. We check that first, and a person approves every purchase.",
     run: async (p) => { await p.goto(BASE + '/', { waitUntil: 'networkidle' }); await sleep(1500); await mark(p, 'h1', 'Identity first'); await sleep(2500); } },
   { id: 'run', say: "Let's try a Apple iPhone 14, 128 gigabytes. The agent searches Google Shopping right now. Gemini reads every listing and decides if it's the same phone. Watch the graph: each result lights it up. Green is the same phone, red is a different one.",
-    run: async (p) => { await p.goto(BASE + '/app/', { waitUntil: 'networkidle' }); await sleep(1000); await type(p, 'Apple iPhone 14 128GB'); await p.waitForSelector('.run', { timeout: 15000 }); await mark(p, '.run', 'Live graph'); await p.waitForSelector('.verdict', { timeout: 120000 }); } },
+    run: async (p) => { await p.goto(BASE + '/app/', { waitUntil: 'networkidle' }); await sleep(1000); await type(p, 'Apple iPhone 16e 128GB'); await p.waitForSelector('.run', { timeout: 15000 }); await mark(p, '.run', 'Live graph'); await p.waitForSelector('.verdict', { timeout: 120000 }); } },
   { id: 'verdict', say: "Then Gemini looks at each photo, and our code checks that the words it quoted are really in the listing. Here's the answer: the cheapest identical price, the cost of reselling it, and every listing we turned down, with the reason. These are asking prices from Google Shopping.",
     run: async (p) => { await p.locator('.verdict').scrollIntoViewIfNeeded(); await sleep(1200); await mark(p, '.verdict', 'The answer'); await sleep(1500); for (let i = 0; i < 6; i++) { await p.mouse.wheel(0, 260); await sleep(1000); } } },
   { id: 'pixel', say: "Not every check ends in a deal. For the Pixel 9 Pro, nothing could be proven identical, so the agent says no. We think an honest no is more useful than a wrong yes.",
@@ -47,21 +49,27 @@ const SEGS = [
     run: async (p) => { await p.setContent(card('skudesk.lol', 'Cloud Run · Firestore · Cloud Scheduler · Secret Manager · Gemini · Merchant API', 'github.com/johnnyduo/SKUdesk_')); } },
 ];
 
-const tok = execFileSync('gcloud', ['auth', 'print-access-token']).toString().trim();
+const VDIR = process.env.VDIR || './v3c';
 for (const s of SEGS) {
-  const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', { method: 'POST', headers: { authorization: `Bearer ${tok}`, 'x-goog-user-project': 'aslanwealth-platform-32812', 'content-type': 'application/json' }, body: JSON.stringify({ input: { text: s.say }, voice: { languageCode: 'en-US', name: VOICE }, audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24000 } }) });
-  const j = await r.json();
-  if (!j.audioContent) throw new Error('TTS failed: ' + JSON.stringify(j).slice(0, 200));
-  writeFileSync(`${OUT}/${s.id}.wav`, Buffer.from(j.audioContent, 'base64'));
-  s.dur = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', `${OUT}/${s.id}.wav`]).toString());
+  const v = VO.find((x) => x.id === s.id);
+  s.say = v.text;
+  s.wav = `${VDIR}/${s.id}.wav`;
+  s.dur = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', s.wav]).toString());
 }
 const browser = await chromium.launch({ channel: 'chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, recordVideo: { dir: `${OUT}/rec`, size: { width: 1440, height: 900 } } });
+const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
 const page = await ctx.newPage();
-const w0 = Date.now();
-await page.goto(BASE + '/', { waitUntil: 'networkidle' }); await page.setViewportSize({ width: 1440, height: 900 }); await sleep(1500);
-const skip = (Date.now() - w0) / 1000;
+await page.goto(BASE + '/', { waitUntil: 'networkidle' }); await sleep(800);
+mkdirSync(`${OUT}/frames`, { recursive: true });
+const cdp = await ctx.newCDPSession(page);
+const frames = []; let nf = 0;
+cdp.on('Page.screencastFrame', async (e) => {
+  const file = `${resolve(OUT)}/frames/f${String(nf++).padStart(6, '0')}.jpg`;
+  writeFileSync(file, Buffer.from(e.data, 'base64')); frames.push({ ts: e.metadata.timestamp, file });
+  await cdp.send('Page.screencastFrameAck', { sessionId: e.sessionId }).catch(() => {});
+});
 const t0 = Date.now();
+await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: 1920, maxHeight: 1080, everyNthFrame: 2 });
 clock = () => (Date.now() - t0) / 1000;
 const starts = [];
 for (const s of SEGS) {
@@ -74,10 +82,15 @@ for (const s of SEGS) {
   if (left > 0) await sleep(left * 1000);
 }
 const total = clock();
+await cdp.send('Page.stopScreencast'); await sleep(300);
 await ctx.close(); await browser.close();
-const webm = readdirSync(`${OUT}/rec`).find((f) => f.endsWith('.webm'));
-const inputs = SEGS.flatMap((s) => ['-i', `${OUT}/${s.id}.wav`]);
-const filt = SEGS.map((s, i) => `[${i + 1}:a]adelay=${Math.round(starts[i] * 1000)}|${Math.round(starts[i] * 1000)}[a${i}]`).join(';') + ';' + SEGS.map((_, i) => `[a${i}]`).join('') + `amix=inputs=${SEGS.length}:normalize=0,loudnorm=I=-16:TP=-1.5[a]`;
-execFileSync('ffmpeg', ['-y', '-ss', String(skip), '-i', `${OUT}/rec/${webm}`, ...inputs, '-filter_complex', filt, '-map', '0:v', '-map', '[a]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-t', String(total), `${OUT}/SKUdesk-demo.mp4`], { stdio: 'ignore' });
+const z = frames[0].ts - 0.05;
+const list = frames.map((f, i) => `file '${f.file}'\nduration ${Math.max(0.001, ((frames[i + 1]?.ts ?? z + total) - f.ts)).toFixed(4)}`).join('\n') + `\nfile '${frames.at(-1).file}'\n`;
+writeFileSync(`${OUT}/frames.txt`, list);
+execFileSync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', `${OUT}/frames.txt`, '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '14', '-preset', 'medium', '-t', String(total), `${OUT}/screen.mp4`], { stdio: 'ignore' });
+const inputs = SEGS.flatMap((s) => ['-i', s.wav]);
+const filt = SEGS.map((s, i) => `[${i}:a]adelay=${Math.round(starts[i] * 1000)}|${Math.round(starts[i] * 1000)}[a${i}]`).join(';') + ';' + SEGS.map((_, i) => `[a${i}]`).join('') + `amix=inputs=${SEGS.length}:normalize=0,loudnorm=I=-16:TP=-1.5[a]`;
+execFileSync('ffmpeg', ['-y', ...inputs, '-filter_complex', filt, '-map', '[a]', '-t', String(total), '-c:a', 'aac', '-b:a', '192k', `${OUT}/voice.m4a`], { stdio: 'ignore' });
+rmSync(`${OUT}/frames`, { recursive: true, force: true });
 writeFileSync(`${OUT}/timing.json`, JSON.stringify({ total, segs: SEGS.map((s, i) => ({ id: s.id, text: s.say, start: starts[i], dur: s.dur })), rects }, null, 1));
-console.log('done', total.toFixed(1), 's', rects.length, 'marks');
+console.log('done', total.toFixed(1), 's', rects.length, 'marks', nf, 'frames');

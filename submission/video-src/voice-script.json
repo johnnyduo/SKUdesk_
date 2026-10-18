@@ -1,0 +1,57 @@
+[
+ {
+  "id": "open",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, starting low and curious, then lifting on the second sentence",
+  "text": "The cheapest iPhone might be the wrong iPhone. SKUdesk checks that two listings are the same item, before it calls anything a deal."
+ },
+ {
+  "id": "why",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace",
+  "text": "A title match proves nothing. A different storage size, a Pro instead of the regular model, even a phone case, can all look like a bargain. So before it looks at price, the agent settles one question: is this the same item?"
+ },
+ {
+  "id": "run",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, like narrating something happening live",
+  "text": "Let's watch it check an iPhone 16e. It searches Google Shopping live, and Gemini reads each listing and decides whether it's the same phone. Green means yes. Red means something else."
+ },
+ {
+  "id": "verdict",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, steady and sure",
+  "text": "It also looks at every photo, and our code confirms the words Gemini quoted really are in the listing. What comes back is the cheapest identical price, the cost of reselling it, and the reason for every listing it rejected. These are asking prices, not sold prices."
+ },
+ {
+  "id": "pixel",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, firm and confident, landing the last sentence",
+  "text": "And sometimes the answer is no. For this Pixel 9 Pro, nothing could be proven identical, so there's nothing to buy. That's the answer you want before you spend anything."
+ },
+ {
+  "id": "market",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace",
+  "text": "The market view puts it together. Sellers' asking prices sit on the book. Below them, four buyer strategies bid what they could pay after fees. And if no bid reaches the best price, there's no deal."
+ },
+ {
+  "id": "switch",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, casual",
+  "text": "Every product the agent watches gets its own book and price history, and a scheduler keeps checking them."
+ },
+ {
+  "id": "orders",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, stressing the word never",
+  "text": "Even when the numbers work, the agent never buys. It files a proposal, and a person approves it."
+ },
+ {
+  "id": "listings",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace",
+  "text": "After approval, the owner can list the resale in Google Merchant Center. You preview it first, and this is a real, connected account."
+ },
+ {
+  "id": "eval",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, hitting the last two phrases hard",
+  "text": "To test the gate, we labelled sixty-seven pairs of listings by hand: phones, LEGO sets, clones, even listings with hidden instructions in them. Zero wrong matches. Zero missed."
+ },
+ {
+  "id": "close",
+  "style": "Say like a founder who is genuinely excited and proud of what they built, energetic and warm, with big natural lift on key words, at a brisk pace, landing the final line warmly",
+  "text": "SKUdesk runs on Google Cloud, and it's live now at skudesk dot lol. One price you can trust, only for the same item."
+ }
+]

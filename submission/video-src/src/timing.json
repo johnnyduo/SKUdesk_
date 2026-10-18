@@ -1,116 +1,116 @@
 {
- "total": 143.246,
+ "total": 125.982,
  "segs": [
   {
    "id": "open",
-   "text": "SKUdesk. One agent that finds the cheapest price, works out what a resale would keep, and checks for arbitrage. Only on the exact same product.",
+   "text": "The cheapest iPhone might be the wrong iPhone. SKUdesk checks that two listings are the same item, before it calls anything a deal.",
    "start": 0.4,
-   "dur": 10.32
+   "dur": 8.498083
   },
   {
    "id": "why",
-   "text": "Here's the problem. A cheap listing is only a deal if it's the same item. Price sites mix up an iPhone 16 and a 16 Pro, or a phone and its case. We check that first, and a person approves every purchase.",
-   "start": 11.221,
-   "dur": 13.64
+   "text": "A title match proves nothing. A different storage size, a Pro instead of the regular model, even a phone case, can all look like a bargain. So before it looks at price, the agent settles one question: is this the same item?",
+   "start": 9.399000000000001,
+   "dur": 13.215417
   },
   {
    "id": "run",
-   "text": "Let's try a Apple iPhone 14, 128 gigabytes. The agent searches Google Shopping right now. Gemini reads every listing and decides if it's the same phone. Watch the graph: each result lights it up. Green is the same phone, red is a different one.",
-   "start": 25.360999999999997,
-   "dur": 18.68
+   "text": "Let's watch it check an iPhone 16e. It searches Google Shopping live, and Gemini reads each listing and decides whether it's the same phone. Green means yes. Red means something else.",
+   "start": 23.115,
+   "dur": 11.49475
   },
   {
    "id": "verdict",
-   "text": "Then Gemini looks at each photo, and our code checks that the words it quoted are really in the listing. Here's the answer: the cheapest identical price, the cost of reselling it, and every listing we turned down, with the reason. These are asking prices from Google Shopping.",
-   "start": 44.543,
-   "dur": 18.44
+   "text": "It also looks at every photo, and our code confirms the words Gemini quoted really are in the listing. What comes back is the cheapest identical price, the cost of reselling it, and the reason for every listing it rejected. These are asking prices, not sold prices.",
+   "start": 40.097,
+   "dur": 16.04275
   },
   {
    "id": "pixel",
-   "text": "Not every check ends in a deal. For the Pixel 9 Pro, nothing could be proven identical, so the agent says no. We think an honest no is more useful than a wrong yes.",
-   "start": 63.484,
-   "dur": 9.32
+   "text": "And sometimes the answer is no. For this Pixel 9 Pro, nothing could be proven identical, so there's nothing to buy. That's the answer you want before you spend anything.",
+   "start": 56.64,
+   "dur": 9.976417
   },
   {
    "id": "market",
-   "text": "The market page shows what the agent knows. Sellers' prices sit on the book, with the gap. Below them, four buyer strategies bid what they could pay after costs. A deal needs a bid that reaches the best price. You can also turn the product around in 3D.",
-   "start": 73.305,
-   "dur": 16.24
+   "text": "The market view puts it together. Sellers' asking prices sit on the book. Below them, four buyer strategies bid what they could pay after fees. And if no bid reaches the best price, there's no deal.",
+   "start": 67.117,
+   "dur": 11.614208
   },
   {
    "id": "switch",
-   "text": "Every product we watch is in this list, each with its own book and its own price history. A scheduler checks them for us, around the clock.",
-   "start": 90.046,
-   "dur": 8
+   "text": "Every product the agent watches gets its own book and price history, and a scheduler keeps checking them.",
+   "start": 80.521,
+   "dur": 5.551958
   },
   {
    "id": "orders",
-   "text": "When the agent does find a buy, it files a proposal. Only the person who ran the check, or the owner, can approve it. The agent never spends money by itself.",
-   "start": 98.546,
-   "dur": 9.4
+   "text": "Even when the numbers work, the agent never buys. It files a proposal, and a person approves it.",
+   "start": 86.92200000000001,
+   "dur": 4.763917
   },
   {
    "id": "listings",
-   "text": "After approval, the owner can list the resale in Google Merchant Center. It's previewed first, and this is a real, connected account.",
-   "start": 108.58300000000001,
-   "dur": 7.76
+   "text": "After approval, the owner can list the resale in Google Merchant Center. You preview it first, and this is a real, connected account.",
+   "start": 96.661,
+   "dur": 7.714542
   },
   {
    "id": "eval",
-   "text": "How do we know the gate works? We labelled sixty-seven pairs of listings by hand: phones, LEGO, clones, bundles, even listings with hidden instructions. It made no wrong match, and missed none.",
-   "start": 116.84400000000001,
-   "dur": 12.96
+   "text": "To test the gate, we labelled sixty-seven pairs of listings by hand: phones, LEGO sets, clones, even listings with hidden instructions in them. Zero wrong matches. Zero missed.",
+   "start": 104.876,
+   "dur": 11.365583
   },
   {
    "id": "close",
-   "text": "SKUdesk runs on Google Cloud: Cloud Run, Firestore, Scheduler, Secret Manager, Gemini and the Merchant API. It's live at skudesk dot lol. Thanks for watching.",
-   "start": 130.305,
-   "dur": 12.84
+   "text": "SKUdesk runs on Google Cloud, and it's live now at skudesk dot lol. One price you can trust, only for the same item.",
+   "start": 116.742,
+   "dur": 9.1385
   }
  ],
  "rects": [
   {
-   "t": 13.898,
-   "x": 154,
-   "y": 258.125,
+   "t": 12.151,
+   "x": 394,
+   "y": 348.125,
    "w": 532.671875,
    "h": 228,
    "label": "Identity first"
   },
   {
-   "t": 29.461,
-   "x": 289,
+   "t": 27.336,
+   "x": 489,
    "y": 586.5,
-   "w": 1102,
+   "w": 1182,
    "h": 248,
    "label": "Live graph"
   },
   {
-   "t": 45.749,
-   "x": 289,
+   "t": 41.671,
+   "x": 489,
    "y": 0,
-   "w": 1102,
+   "w": 1182,
    "h": 200.59375,
    "label": "The answer"
   },
   {
-   "t": 69.244,
-   "x": 289,
+   "t": 62.705,
+   "x": 489,
    "y": 0,
-   "w": 1102,
+   "w": 1182,
    "h": 200.59375,
    "label": "No identical product, no buy"
   },
   {
-   "t": 77.956,
-   "x": 1092,
-   "y": 0,
+   "t": 71.528,
+   "x": 1572,
+   "y": 74.578125,
    "w": 340,
-   "h": 900,
+   "h": 1005.28125,
    "label": "Asks, spread and bids"
   },
   {
-   "t": 81.844,
+   "t": 75.459,
    "x": 8,
    "y": 149.984375,
    "w": 300,
@@ -118,15 +118,15 @@
    "label": "Drag to turn"
   },
   {
-   "t": 84.913,
+   "t": 78.32,
    "x": 316,
-   "y": 307.71875,
-   "w": 768,
-   "h": 568,
+   "y": 293.96875,
+   "w": 1248,
+   "h": 584,
    "label": "Price history"
   },
   {
-   "t": 90.793,
+   "t": 81.234,
    "x": 8,
    "y": 97,
    "w": 520,
@@ -134,10 +134,10 @@
    "label": "Every watched product"
   },
   {
-   "t": 122.693,
-   "x": 289,
-   "y": 815.5,
-   "w": 1102,
+   "t": 107.303,
+   "x": 489,
+   "y": 888.5,
+   "w": 1182,
    "h": 84.5,
    "label": "Sixty-seven labelled pairs"
   }
