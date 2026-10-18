@@ -390,3 +390,5 @@
 
 .mk-reject-dot{fill:rgba(255,178,36,.55);stroke:var(--amber);stroke-width:1}
 .mk-rej .mk-who{overflow-wrap:anywhere}
+
+.mk-tkt .mind{height:64px}

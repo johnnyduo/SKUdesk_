@@ -1,4 +1,5 @@
 import { h, thumbSrc } from './client.ts';
+import { createMind } from './mind.ts';
 
 const STAGES: [string, string][] = [['search', 'Search listings'], ['gate', 'Identity gate'], ['photos', 'Photo check'], ['sanity', 'Price sanity'], ['economics', 'Economics'], ['briefing', 'Briefing']];
 
@@ -7,19 +8,22 @@ export function createRunPanel(): { el: HTMLElement; handle(ev: any): void; star
   const steps = STAGES.map(([key, label], i) => h('li', { class: 'stage-step', 'data-s': key }, h('b', {}, i + 1), label));
   const msg = h('p', { class: 'run-msg' }, 'Starting…');
   const wall = h('div', { class: 'wall', 'aria-label': 'Listings being judged' });
-  const el = h('div', { class: 'run card', 'aria-live': 'polite' }, h('ol', { class: 'stages' }, steps), msg, wall);
+  const mind = createMind(STAGES.length);
+  const el = h('div', { class: 'run card', 'aria-live': 'polite' }, h('ol', { class: 'stages' }, steps), mind.el, msg, wall);
   const setStage = (name: string, all = false): void => {
     const at = STAGES.findIndex(([k]) => k === name);
     steps.forEach((s, i) => { s.classList.toggle('done', all || i < at); s.classList.toggle('act', !all && i === at); });
+    if (!all) mind.setLayer(at);
   };
   return {
     el,
-    start() { wall.replaceChildren(); setStage('search'); msg.textContent = 'Searching Google Shopping…'; },
-    finish() { setStage('briefing', true); },
+    start() { wall.replaceChildren(); mind.run(); setStage('search'); msg.textContent = 'Searching Google Shopping…'; },
+    finish() { setStage('briefing', true); mind.stop(); },
     handle(ev) {
       if (ev.type === 'search') { setStage('gate'); msg.textContent = `Found ${ev.listings} listings${ev.fromCache ? ' (cached search)' : ''}. Asking Gemini whether each one is the identical product…`; }
       else if (ev.type === 'gate') {
         const src = thumbSrc(ev.thumbnail);
+        mind.pulse(ev.verdict === 'identical' ? 'identical' : ev.verdict === 'different' ? 'different' : 'uncertain');
         wall.append(h('div', { class: `chip ${ev.verdict}`, title: `${ev.seller}: ${ev.title}` }, src ? h('img', { src, alt: '' }) : null, h('i')));
         msg.textContent = `Judged ${ev.done} of ${ev.total}. Green passes, red is a different product, amber is not provable.`;
       } else if (ev.type === 'vision') {
