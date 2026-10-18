@@ -13,3 +13,7 @@ web/.astro/
 .dev.vars
 .dev.vars.*
 .shots/
+
+# submission assets: the video is uploaded, not stored here; Google template is theirs
+submission/*.mp4
+Submission Template _ AI Builder Cup.pdf

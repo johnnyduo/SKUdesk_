@@ -1,0 +1,145 @@
+{
+ "total": 143.246,
+ "segs": [
+  {
+   "id": "open",
+   "text": "SKUdesk. One agent that finds the cheapest price, works out what a resale would keep, and checks for arbitrage. Only on the exact same product.",
+   "start": 0.4,
+   "dur": 10.32
+  },
+  {
+   "id": "why",
+   "text": "Here's the problem. A cheap listing is only a deal if it's the same item. Price sites mix up an iPhone 16 and a 16 Pro, or a phone and its case. We check that first, and a person approves every purchase.",
+   "start": 11.221,
+   "dur": 13.64
+  },
+  {
+   "id": "run",
+   "text": "Let's try a Apple iPhone 14, 128 gigabytes. The agent searches Google Shopping right now. Gemini reads every listing and decides if it's the same phone. Watch the graph: each result lights it up. Green is the same phone, red is a different one.",
+   "start": 25.360999999999997,
+   "dur": 18.68
+  },
+  {
+   "id": "verdict",
+   "text": "Then Gemini looks at each photo, and our code checks that the words it quoted are really in the listing. Here's the answer: the cheapest identical price, the cost of reselling it, and every listing we turned down, with the reason. These are asking prices from Google Shopping.",
+   "start": 44.543,
+   "dur": 18.44
+  },
+  {
+   "id": "pixel",
+   "text": "Not every check ends in a deal. For the Pixel 9 Pro, nothing could be proven identical, so the agent says no. We think an honest no is more useful than a wrong yes.",
+   "start": 63.484,
+   "dur": 9.32
+  },
+  {
+   "id": "market",
+   "text": "The market page shows what the agent knows. Sellers' prices sit on the book, with the gap. Below them, four buyer strategies bid what they could pay after costs. A deal needs a bid that reaches the best price. You can also turn the product around in 3D.",
+   "start": 73.305,
+   "dur": 16.24
+  },
+  {
+   "id": "switch",
+   "text": "Every product we watch is in this list, each with its own book and its own price history. A scheduler checks them for us, around the clock.",
+   "start": 90.046,
+   "dur": 8
+  },
+  {
+   "id": "orders",
+   "text": "When the agent does find a buy, it files a proposal. Only the person who ran the check, or the owner, can approve it. The agent never spends money by itself.",
+   "start": 98.546,
+   "dur": 9.4
+  },
+  {
+   "id": "listings",
+   "text": "After approval, the owner can list the resale in Google Merchant Center. It's previewed first, and this is a real, connected account.",
+   "start": 108.58300000000001,
+   "dur": 7.76
+  },
+  {
+   "id": "eval",
+   "text": "How do we know the gate works? We labelled sixty-seven pairs of listings by hand: phones, LEGO, clones, bundles, even listings with hidden instructions. It made no wrong match, and missed none.",
+   "start": 116.84400000000001,
+   "dur": 12.96
+  },
+  {
+   "id": "close",
+   "text": "SKUdesk runs on Google Cloud: Cloud Run, Firestore, Scheduler, Secret Manager, Gemini and the Merchant API. It's live at skudesk dot lol. Thanks for watching.",
+   "start": 130.305,
+   "dur": 12.84
+  }
+ ],
+ "rects": [
+  {
+   "t": 13.898,
+   "x": 154,
+   "y": 258.125,
+   "w": 532.671875,
+   "h": 228,
+   "label": "Identity first"
+  },
+  {
+   "t": 29.461,
+   "x": 289,
+   "y": 586.5,
+   "w": 1102,
+   "h": 248,
+   "label": "Live graph"
+  },
+  {
+   "t": 45.749,
+   "x": 289,
+   "y": 0,
+   "w": 1102,
+   "h": 200.59375,
+   "label": "The answer"
+  },
+  {
+   "t": 69.244,
+   "x": 289,
+   "y": 0,
+   "w": 1102,
+   "h": 200.59375,
+   "label": "No identical product, no buy"
+  },
+  {
+   "t": 77.956,
+   "x": 1092,
+   "y": 0,
+   "w": 340,
+   "h": 900,
+   "label": "Asks, spread and bids"
+  },
+  {
+   "t": 81.844,
+   "x": 8,
+   "y": 149.984375,
+   "w": 300,
+   "h": 302,
+   "label": "Drag to turn"
+  },
+  {
+   "t": 84.913,
+   "x": 316,
+   "y": 307.71875,
+   "w": 768,
+   "h": 568,
+   "label": "Price history"
+  },
+  {
+   "t": 90.793,
+   "x": 8,
+   "y": 97,
+   "w": 520,
+   "h": 44.984375,
+   "label": "Every watched product"
+  },
+  {
+   "t": 122.693,
+   "x": 289,
+   "y": 815.5,
+   "w": 1102,
+   "h": 84.5,
+   "label": "Sixty-seven labelled pairs"
+  }
+ ]
+}
